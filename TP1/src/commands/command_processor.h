@@ -15,6 +15,13 @@ enum FileType {
     TYPE2 = 2
 };
 
+enum FieldType {
+    STR,
+    CHAR,
+    UINT32,
+    INT32
+};
+
 typedef struct CommandArgs {
     enum Command command;
     enum FileType fileType;

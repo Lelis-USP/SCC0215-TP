@@ -1,9 +1,10 @@
 #pragma once
 
 #include "struct/t1_struct.h"
+#include "struct/t2_struct.h"
 
-const T1Header DEFAULT_HEADER = {
-    '1',
+static const T1Header DEFAULT_T1_HEADER = {
+    STATUS_GOOD,
     -1,
     "LISTAGEM DA FROTA DOS VEICULOS NO BRASIL",
     "CODIGO IDENTIFICADOR: ",
@@ -18,4 +19,22 @@ const T1Header DEFAULT_HEADER = {
     "MODELO DO VEICULO: ",
     0,
     0
+};
+
+static const T2Header DEFAULT_T2_HEADER = {
+        STATUS_GOOD,
+        -1,
+        "LISTAGEM DA FROTA DOS VEICULOS NO BRASIL",
+        "CODIGO IDENTIFICADOR: ",
+        "ANO DE FABRICACAO: ",
+        "QUANTIDADE DE VEICULOS: ",
+        "ESTADO: ",
+        "0",
+        "NOME DA CIDADE: ",
+        "1",
+        "MARCA DO VEICULO: ",
+        "2",
+        "MODELO DO VEICULO: ",
+        0,
+        0
 };

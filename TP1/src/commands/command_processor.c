@@ -4,6 +4,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "const/const.h"
+#include "struct/t1_struct.h"
+#include "struct/t2_struct.h"
+#include "utils/provided_functions.h"
+#include "utils/csv_parser.h"
+
 CommandArgs* new_command_args(enum Command command) {
     CommandArgs* args = malloc(sizeof(struct CommandArgs));
 
@@ -112,14 +118,81 @@ CommandArgs* read_command(FILE* source) {
         case DESERIALIZE_AND_PRINT:
             break;
         case DESERIALIZE_FILTER_AND_PRINT:
-            // STOPPED HERE
+            uint32_t n_filters;
+            scanf("%u", &n_filters);
+
+            FilterArgs* tail = NULL;
+            for (uint32_t i = 0; i  < n_filters; i++) {
+                FilterArgs* new_filter = malloc(sizeof (struct FilterArgs));
+                new_filter->next = NULL;
+
+                // Read field name
+                fscanf(source, "%511s", buffer);
+                size_t field_len = strnlen(buffer, 512);
+                new_filter->key = calloc(field_len + 1, sizeof (char));
+                memcpy(new_filter->key, buffer, field_len);
+
+                // Read value
+                scan_quote_string(buffer);
+                size_t value_len = strnlen(buffer, 512);
+                new_filter->value = calloc(value_len + 1, sizeof (char));
+                memcpy(new_filter->value, buffer, value_len);
+
+                // Update list tail ref
+                if (tail == NULL) {
+                    args->specificData = new_filter;
+                } else {
+                    tail->next = new_filter;
+                }
+
+                tail = new_filter;
+            }
             break;
         case DESERIALIZE_SEARCH_RRN_AND_PRINT:
+            SearchByRRNArgs* rrn_args = malloc(sizeof(struct SearchByRRNArgs));
+            fscanf(source, "%llu", &rrn_args->rrn);
+            args->specificData = rrn_args;
             break;
     }
+
+    return args;
 }
 
-void c_parse_and_serialize(CommandArgs* args);
+void c_parse_and_serialize(CommandArgs* args) {
+    assert(args->sourceFile != NULL);
+    assert(args->destFile != NULL);
+
+    // Open CSV file
+    FILE* csv_file = fopen(args->sourceFile, "r");
+    assert(csv_file != NULL);
+
+    // Load CSV Content
+    CSVContent* csv_content = read_csv(csv_file, true);
+    fclose(csv_file);
+
+    // Write contents into the file
+    FILE* dest_file = fopen(args->destFile, "wb");
+    if (args->fileType == TYPE1) {
+        // Write default header with a bad status
+        T1Header header = DEFAULT_T1_HEADER; // Copy default T1Header
+        header.status = STATUS_BAD;
+        t1_write_header(&header, dest_file);
+
+        // STOPPED HERE
+
+        // Update status at beginning
+        header.status = STATUS_GOOD;
+        fseek(dest_file, 0, SEEK_SET);
+        t1_write_header(&header, dest_file);
+    } else {
+
+    }
+    fclose(dest_file);
+
+
+    destroy_csvcontent(csv_content); // Free CSVContent's memory
+}
+
 void c_deserialize_and_print(CommandArgs* args);
 void c_deserialize_filter_and_print(CommandArgs* args);
 void c_deserialize_search_rrn_and_print(CommandArgs* args);

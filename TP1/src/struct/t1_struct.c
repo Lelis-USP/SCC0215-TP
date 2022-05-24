@@ -11,7 +11,7 @@
  * @param dest target file (must be writable and in binary mode)
  * @param header header to be serialized into the file
  */
-void t1_write_header(FILE* dest, T1Header* header) {
+void t1_write_header(T1Header* header, FILE* dest) {
   // TO-DO: Should I use a local memory buffer here to do a single write call?
   // TO-DO: Should I check for fwrite failures (return < 1)?
 
@@ -43,7 +43,7 @@ void t1_write_header(FILE* dest, T1Header* header) {
  * @param src source file (must be readable and in binary mode)
  * @param header target header
  */
-void t1_read_header(FILE* src, T1Header* header) {
+void t1_read_header(T1Header* header, FILE* src) {
   // Basic input validation
   assert(src != NULL);
   assert(header != NULL);
@@ -87,22 +87,16 @@ void t1_write_registry(FILE* dest, T1Registry* registry) {
   fwrite(&registry->id, member_size(T1Registry, id), 1, dest);
   fwrite(&registry->ano, member_size(T1Registry, ano), 1, dest);
   fwrite(&registry->qtt, member_size(T1Registry, qtt), 1, dest);
-  fwrite(registry->sigla, member_size(T1Registry, sigla), 1, dest);
-  fwrite(&registry->tamCidade, member_size(T1Registry, tamCidade), 1, dest);
-  fwrite(registry->codC5, member_size(T1Registry, codC5), 1, dest);
-  fwrite(registry->cidade, len_cidade, 1, dest);
-  fwrite(&registry->tamMarca, member_size(T1Registry, tamMarca), 1, dest);
-  fwrite(registry->codC6, member_size(T1Registry, codC5), 1, dest);
-  fwrite(registry->marca, len_marca, 1, dest);
-  fwrite(&registry->tamModelo, member_size(T1Registry, tamModelo), 1, dest);
-  fwrite(registry->codC6, member_size(T1Registry, codC6), 1, dest);
-  fwrite(registry->modelo, len_modelo, 1, dest);
+
+  fwrite(registry->sigla, sizeof(char), member_size(T1Registry, sigla), dest);
+
+  write_var_len_str(registry->cidade, registry->tamCidade, registry->codC5, dest);
+  write_var_len_str(registry->marca, registry->tamMarca, registry->codC6, dest);
+  write_var_len_str(registry->modelo, registry->tamModelo, registry->codC7, dest);
 
   size_t filled_bytes = T1_STATIC_REGISTRY_SIZE + len_modelo + len_marca + len_cidade;
   size_t missing_bytes = T1_TOTAL_REGISTRY_SIZE - filled_bytes;
 
   // Fill remaining bytes for run.codes autocorrect
-  for (size_t i = 0; i < missing_bytes; i++) {
-      fwrite(FILLER_BYTE, 1, 1, dest);
-  }
+  fill_bytes(missing_bytes, dest);
 }
