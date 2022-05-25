@@ -161,6 +161,7 @@ CSVContent* read_csv(FILE* csv_file, bool has_header) {
                     new_field->content = calloc(buffer_idx + 1, sizeof (char));
                     memcpy(new_field->content, buffer, buffer_idx);
                     new_field->content[buffer_idx] = '\0';
+                    new_field->content_len = buffer_idx;
                     buffer_idx = 0;
                 }
 

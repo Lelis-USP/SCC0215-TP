@@ -12,6 +12,7 @@ typedef struct CSVHeader {
 
 typedef struct CSVField {
     char* content;
+    size_t content_len;
     struct CSVField* next;
 } CSVField;
 

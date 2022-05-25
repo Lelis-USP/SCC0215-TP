@@ -9,6 +9,7 @@
 #include "struct/t2_struct.h"
 #include "utils/provided_functions.h"
 #include "utils/csv_parser.h"
+#include "utils/registry_builder.h"
 
 CommandArgs* new_command_args(enum Command command) {
     CommandArgs* args = malloc(sizeof(struct CommandArgs));
@@ -178,7 +179,13 @@ void c_parse_and_serialize(CommandArgs* args) {
         header.status = STATUS_BAD;
         t1_write_header(&header, dest_file);
 
-        // STOPPED HERE
+        // Write registries
+        CSVLine* current_line = csv_content->head_line;
+        while (current_line != NULL) {
+            T1Registry* registry = t1_build_from_csv_line(csv_content, current_line);
+            t1_write_registry(registry, dest_file);
+            current_line = current_line->next;
+        }
 
         // Update status at beginning
         header.status = STATUS_GOOD;
@@ -189,6 +196,7 @@ void c_parse_and_serialize(CommandArgs* args) {
     }
     fclose(dest_file);
 
+    binarioNaTela(args->destFile);
 
     destroy_csvcontent(csv_content); // Free CSVContent's memory
 }

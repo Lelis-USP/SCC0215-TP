@@ -34,7 +34,7 @@ typedef struct T2Header {
     char desC6[T2_HEADER_DES_C6_SIZE];
     char codC7[T2_HEADER_COD_C7_SIZE];
     char desC7[T2_HEADER_DES_C7_SIZE];
-    uint64_t proxByteOffset;
+    int64_t proxByteOffset;
     uint32_t nroRegRem;
 } T2Header;
 
@@ -42,17 +42,17 @@ typedef struct T2Registry {
     char removido;
     uint64_t tamanhoRegistro;
     int64_t prox;
-    uint32_t id;
-    uint32_t ano;
-    uint32_t qtt;
+    int32_t id;
+    int32_t ano;
+    int32_t qtt;
     char sigla[REGISTRY_SIGLA_SIZE];
-    uint32_t tamCidade;
+    strlen_t tamCidade;
     char codC5[1];
     char* cidade;
-    uint32_t tamMarca;
+    strlen_t tamMarca;
     char codC6[1];
     char* marca;
-    uint32_t tamModelo;
+    strlen_t tamModelo;
     char codC7[1];
     char* modelo;
 } T2Registry;

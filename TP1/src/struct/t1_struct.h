@@ -35,16 +35,16 @@ typedef struct T1Header {
   char desC6[T1_HEADER_DES_C6_SIZE];
   char codC7[T1_HEADER_COD_C7_SIZE];
   char desC7[T1_HEADER_DES_C7_SIZE];
-  uint32_t proxRRN;
+  int32_t proxRRN;
   uint32_t nroRegRem;
 } T1Header;
 
 typedef struct T1Registry {
   char removido;
   int32_t prox;
-  uint32_t id;
-  uint32_t ano;
-  uint32_t qtt;
+  int32_t id;
+  int32_t ano;
+  int32_t qtt;
   char sigla[REGISTRY_SIGLA_SIZE];
   strlen_t tamCidade;
   char codC5[CODE_FIELD_LEN];
@@ -74,7 +74,7 @@ static const size_t T1_STATIC_REGISTRY_SIZE = member_size(T1Registry, removido)
 size_t t1_write_header(T1Header* header, FILE* dest);
 T1Header* t1_read_header(FILE* src);
 
-size_t t1_write_registry(FILE* dest, T1Registry* registry);
+size_t t1_write_registry(T1Registry* registry, FILE* dest);
 T1Registry* t1_read_registry(FILE* src);
 
 T1Header* t1_new_header();

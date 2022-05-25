@@ -72,7 +72,7 @@ void t1_read_header(T1Header* header, FILE* src) {
  * @param dest destination file pointer
  * @param registry the registry to be serializes into file
  */
-void t1_write_registry(FILE* dest, T1Registry* registry) {
+size_t t1_write_registry(T1Registry* registry, FILE* dest) {
   // Basic input validation
   assert(dest != NULL);
   assert(registry != NULL);
