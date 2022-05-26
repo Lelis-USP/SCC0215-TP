@@ -49,18 +49,20 @@ size_t t2_write_header(T2Header* header, FILE* dest) {
 /**
  * Read a header struct from a file (at the current position, no seeking)
  *
+ * @param header the header to write the data into
  * @param src source file
- * @return the read header (NULL if failed)
+ * @return the amount of bytes read
  */
-T2Header* t2_read_header(FILE* src) {
+size_t t2_read_header(T2Header* header, FILE* src) {
     /**
      * Checklist:
      * Shall I check for read failures for every field (to catch an early EOF for example)
      */
-    T2Header* header = t2_new_header();
     if (header == NULL) {
-        return header;
+        return 0;
     }
+
+    t2_setup_header(header); // Place default data into header
 
     // Read struct's fields in order
 
@@ -69,8 +71,7 @@ T2Header* t2_read_header(FILE* src) {
     read_bytes += fread_member_field(header, status, src);
 
     if (read_bytes == 0) {
-        t2_destroy_header(header);
-        return NULL;
+        return read_bytes;
     }
 
     read_bytes += fread_member_field(header, topo, src);
@@ -88,7 +89,7 @@ T2Header* t2_read_header(FILE* src) {
     read_bytes += fread_member_field(header, proxByteOffset, src);
     read_bytes += fread_member_field(header, nroRegRem, src);
 
-    return header;
+    return read_bytes;
 }
 
 /**
@@ -169,22 +170,23 @@ size_t t2_write_registry(T2Registry* registry, FILE* dest) {
 /**
  * Read a registry from the current file position
  *
+ * @param registry the regisrty to write the data into
  * @param src source file
- * @return the read registry
+ * @return the amount of bytes read (include skipped bytes)
  */
-T2Registry* t2_read_registry(FILE* src) {
-    T2Registry* registry = t2_new_registry();
+size_t t2_read_registry(T2Registry* registry, FILE* src) {
     if (registry == NULL) {
-        return registry;
+        return 0;
     }
+
+    t2_setup_registry(registry); // Place default data into registry
 
     // Read struct's fields in order
 
     // Measure read bytes for the first field, if 0 there was a failure, stop from here. if 1, assume that everything is fine
     size_t read_bytes = fread_member_field(registry, removido, src);
     if (read_bytes == 0) {
-        t2_destroy_registry(registry);
-        return NULL;
+        return 0;
     }
 
     // Read fixed length fields
@@ -209,14 +211,17 @@ T2Registry* t2_read_registry(FILE* src) {
         if (strncmp(var_len_field.code, "0", CODE_FIELD_LEN) == 0) {
             registry->tamCidade = var_len_field.size;
             memcpy(registry->codC5, var_len_field.code, CODE_FIELD_LEN * sizeof (char));
+            free(registry->cidade);
             registry->cidade = var_len_field.data;
         } else if (strncmp(var_len_field.code, "1", CODE_FIELD_LEN) == 0) {
             registry->tamMarca = var_len_field.size;
             memcpy(registry->codC6, var_len_field.code, CODE_FIELD_LEN * sizeof (char));
+            free(registry->marca);
             registry->marca = var_len_field.data;
         } else if (strncmp(var_len_field.code, "2", CODE_FIELD_LEN) == 0) {
             registry->tamModelo = var_len_field.size;
             memcpy(registry->codC7, var_len_field.code, CODE_FIELD_LEN * sizeof (char));
+            free(registry->modelo);
             registry->modelo = var_len_field.data;
         } else {
             assert(0 && "Invalid column code");
@@ -226,10 +231,39 @@ T2Registry* t2_read_registry(FILE* src) {
     // Ensure the amount of bytes read follows the expected size
     assert(read_bytes == registry->tamanhoRegistro + t2_ignored_size);
 
-    return registry;
+    return read_bytes;
 }
 
 // Constructors & Destructors //
+
+/**
+ * Setup header with NULL/default data
+ *
+ * @param registry target header
+ */
+void t2_setup_header(T2Header* header) {
+    header->status = STATUS_BAD;
+    header->topo = -1;
+    header->proxByteOffset = 0;
+    header->nroRegRem = 0;
+}
+
+/**
+ * Setup registry with NULL/default data
+ *
+ * @param registry target registry
+ */
+void t2_setup_registry(T2Registry* registry) {
+    registry->removido = NOT_REMOVED;
+    registry->prox = -1;
+    registry->tamCidade = 0;
+    registry->cidade = NULL;
+    registry->tamMarca = 0;
+    registry->marca = NULL;
+    registry->tamModelo = 0;
+    registry->modelo = NULL;
+    registry->tamanhoRegistro = 0;
+}
 
 /**
  * Allocate a new header and setup some of its fields to ensure consistent behaviour
@@ -238,11 +272,7 @@ T2Registry* t2_read_registry(FILE* src) {
 T2Header* t2_new_header() {
     T2Header* header = malloc(sizeof (struct T2Header));
     assert(header != NULL);
-
-    header->status = STATUS_BAD;
-    header->topo = -1;
-    header->proxByteOffset = 0;
-    header->nroRegRem = 0;
+    t2_setup_header(header);
     return header;
 }
 
@@ -253,16 +283,7 @@ T2Header* t2_new_header() {
 T2Registry* t2_new_registry() {
     T2Registry* registry = malloc(sizeof (struct T2Registry));
     assert(registry != NULL);
-
-    registry->removido = NOT_REMOVED;
-    registry->prox = -1;
-    registry->tamCidade = 0;
-    registry->cidade = NULL;
-    registry->tamMarca = 0;
-    registry->marca = NULL;
-    registry->tamModelo = 0;
-    registry->modelo = NULL;
-    registry->tamanhoRegistro = 0;
+    t2_setup_registry(registry);
     return registry;
 }
 

@@ -34,6 +34,8 @@ typedef struct FilterArgs {
     struct FilterArgs* next;
 } FilterArgs;
 
+#define NULL_FIELD_REPR "NAO PREENCHIDO"
+
 CommandArgs* new_command_args(enum Command command);
 void destroy_command_args(CommandArgs* args);
 

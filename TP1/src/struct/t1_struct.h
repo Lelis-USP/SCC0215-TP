@@ -58,10 +58,13 @@ typedef struct T1Registry {
 } T1Registry;
 
 size_t t1_write_header(T1Header* header, FILE* dest);
-T1Header* t1_read_header(FILE* src);
+size_t t1_read_header(T1Header* header, FILE* src);
 
 size_t t1_write_registry(T1Registry* registry, FILE* dest);
-T1Registry* t1_read_registry(FILE* src);
+size_t t1_read_registry(T1Registry* registry, FILE* src);
+
+void t1_setup_header(T1Header* header);
+void t1_setup_registry(T1Registry* registry);
 
 T1Header* t1_new_header();
 T1Registry* t1_new_registry();

@@ -223,15 +223,184 @@ void c_parse_and_serialize(CommandArgs* args) {
     destroy_csvcontent(csv_content); // Free CSVContent's memory
 }
 
+/**
+ * Print a fixed length string
+ * @param desc target string
+ * @param n string length
+ */
+void print_fixed_len_str(char* desc, size_t n) {
+    for (size_t i = 0; i < n; i++) {
+        putchar(desc[i]);
+    }
+}
+
+// Macro for printing a column description
+#define print_column_description(desc) print_fixed_len_str(desc, sizeof(desc)/sizeof(char))
+
+/**
+ * Print a given type 1 registry into stdout
+ *
+ * @param header current file header
+ * @param registry current registry
+ */
+void t1_print_registry(T1Header* header, T1Registry* registry) {
+    // Marca
+    print_column_description(header->desC6);
+    if (registry->marca == NULL) {
+        puts(NULL_FIELD_REPR);
+    } else {
+        printf("%s\n", registry->marca);
+    }
+
+    // Modelo
+    print_column_description(header->desC7);
+    if (registry->modelo == NULL) {
+        puts(NULL_FIELD_REPR);
+    } else {
+        printf("%s\n", registry->modelo);
+    }
+
+    // Ano Fabricacao
+    print_column_description(header->desC2);
+    if (registry->ano == -1) {
+        puts(NULL_FIELD_REPR);
+    } else {
+        printf("%d\n", registry->ano);
+    }
+
+    // Cidade
+    print_column_description(header->desC5);
+    if (registry->cidade == NULL) {
+        puts(NULL_FIELD_REPR);
+    } else {
+        printf("%s\n", registry->cidade);
+    }
+
+    // Qtt
+    print_column_description(header->desC3);
+    if (registry->qtt == -1) {
+        puts(NULL_FIELD_REPR);
+    } else {
+        printf("%d\n", registry->qtt);
+    }
+
+    putchar('\n');
+}
+
+
+/**
+ * Print a given type 2 registry into stdout
+ *
+ * @param header current file header
+ * @param registry current registry
+ */
+void t2_print_registry(T2Header* header, T2Registry* registry) {
+    // Marca
+    print_column_description(header->desC6);
+    if (registry->marca == NULL) {
+        puts(NULL_FIELD_REPR);
+    } else {
+        printf("%s\n", registry->marca);
+    }
+
+    // Modelo
+    print_column_description(header->desC7);
+    if (registry->modelo == NULL) {
+        puts(NULL_FIELD_REPR);
+    } else {
+        printf("%s\n", registry->modelo);
+    }
+
+    // Ano Fabricacao
+    print_column_description(header->desC2);
+    if (registry->ano == -1) {
+        puts(NULL_FIELD_REPR);
+    } else {
+        printf("%d\n", registry->ano);
+    }
+
+    // Cidade
+    print_column_description(header->desC5);
+    if (registry->cidade == NULL) {
+        puts(NULL_FIELD_REPR);
+    } else {
+        printf("%s\n", registry->cidade);
+    }
+
+    // Qtt
+    print_column_description(header->desC3);
+    if (registry->qtt == -1) {
+        puts(NULL_FIELD_REPR);
+    } else {
+        printf("%d\n", registry->qtt);
+    }
+
+    putchar('\n');
+}
+
 void c_deserialize_and_print(CommandArgs* args) {
     assert(args->sourceFile != NULL);
 
     FILE* file = fopen(args->sourceFile, "rb");
     if (args->fileType == TYPE1) {
-        T1Header* header = t1_read_header(file);
-    } else {
+        T1Header* header = t1_new_header();
+        size_t read_bytes = t1_read_header(header, file);
 
+        bool printed = false;
+
+        if (read_bytes == 0 || header->status == STATUS_BAD) {
+            puts(FILE_ERROR_MSG);
+        } else {
+            T1Registry* registry = t1_new_registry();
+            for (uint32_t i = 0; i < header->proxRRN; i++) {
+                read_bytes += t1_read_registry(registry, file);
+
+                if (registry == NULL || registry->removido == REMOVED) {
+                    continue;
+                }
+
+                t1_print_registry(header, registry);
+                printed = true;
+            }
+            t1_destroy_registry(registry);
+
+            if (!printed) {
+                puts(EMPTY_REGISTRY_MSG);
+            }
+        }
+
+        t1_destroy_header(header);
+    } else {
+        T2Header* header = t2_new_header();
+        size_t read_bytes = t2_read_header(header, file);
+
+        bool printed = false;
+
+        if (read_bytes == 0 || header->status == STATUS_BAD) {
+            puts(FILE_ERROR_MSG);
+        } else {
+
+            T2Registry* registry = t2_new_registry();
+            while (read_bytes < header->proxByteOffset) {
+                read_bytes += t2_read_registry(registry, file);
+
+                if (registry == NULL || registry->removido == REMOVED) {
+                    continue;
+                }
+
+                t2_print_registry(header, registry);
+                printed = true;
+            }
+            t2_destroy_registry(registry);
+
+            if (!printed) {
+                puts(EMPTY_REGISTRY_MSG);
+            }
+        }
+
+        t2_destroy_header(header);
     }
+    fclose(file);
 }
 
 void c_deserialize_filter_and_print(CommandArgs* args) {}
