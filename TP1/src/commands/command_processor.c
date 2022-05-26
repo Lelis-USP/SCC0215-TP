@@ -185,6 +185,7 @@ void c_parse_and_serialize(CommandArgs* args) {
             T1Registry* registry = t1_build_from_csv_line(csv_content, current_line);
             t1_write_registry(registry, dest_file);
             current_line = current_line->next;
+            header.proxRRN++;
         }
 
         // Update status at beginning
@@ -192,7 +193,24 @@ void c_parse_and_serialize(CommandArgs* args) {
         fseek(dest_file, 0, SEEK_SET);
         t1_write_header(&header, dest_file);
     } else {
+        // Write default header with a bad status
+        T2Header header = DEFAULT_T2_HEADER; // Copy default T1Header
+        header.status = STATUS_BAD;
+        t2_write_header(&header, dest_file);
 
+        // Write registries
+        CSVLine* current_line = csv_content->head_line;
+        while (current_line != NULL) {
+            T2Registry* registry = t2_build_from_csv_line(csv_content, current_line);
+            size_t written_bytes = t2_write_registry(registry, dest_file);
+            current_line = current_line->next;
+            header.proxByteOffset += (int64_t) written_bytes;
+        }
+
+        // Update status at beginning
+        header.status = STATUS_GOOD;
+        fseek(dest_file, 0, SEEK_SET);
+        t2_write_header(&header, dest_file);
     }
     fclose(dest_file);
 
@@ -201,6 +219,6 @@ void c_parse_and_serialize(CommandArgs* args) {
     destroy_csvcontent(csv_content); // Free CSVContent's memory
 }
 
-void c_deserialize_and_print(CommandArgs* args);
-void c_deserialize_filter_and_print(CommandArgs* args);
-void c_deserialize_search_rrn_and_print(CommandArgs* args);
+void c_deserialize_and_print(CommandArgs* args) {}
+void c_deserialize_filter_and_print(CommandArgs* args) {}
+void c_deserialize_search_rrn_and_print(CommandArgs* args) {}

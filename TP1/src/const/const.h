@@ -35,6 +35,6 @@ static const T2Header DEFAULT_T2_HEADER = {
         "MARCA DO VEICULO: ",
         "2",
         "MODELO DO VEICULO: ",
-        0,
+        T2_HEADER_SIZE,
         0
 };
