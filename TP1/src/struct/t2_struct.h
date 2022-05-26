@@ -57,7 +57,14 @@ typedef struct T2Registry {
     char* modelo;
 } T2Registry;
 
-void t2_write_header(FILE* dest, T2Header* header);
-void t2_read_header(FILE* src, T2Header* header);
+size_t t2_write_header(T2Header* header, FILE* dest);
+T2Header* t2_read_header(FILE* src);
 
-void t2_write_registry(FILE* dest, T2Registry* registry);
+size_t t2_write_registry(T2Registry* registry, FILE* dest);
+T2Registry* t2_read_registry(FILE* src);
+
+T2Header* t2_new_header();
+T2Registry* t2_new_registry();
+
+void t2_destroy_header(T2Header* header);
+void t2_destroy_registry(T2Registry* registry);
