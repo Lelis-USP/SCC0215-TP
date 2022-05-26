@@ -106,8 +106,9 @@ CommandArgs* read_command(FILE* source) {
     args->sourceFile = calloc(path_len + 1, sizeof(char));
     memcpy(args->sourceFile, buffer, path_len);
 
-
     // Handle command-specific params
+    uint32_t n_filters;
+    SearchByRRNArgs* rrn_args;
     switch (args->command) {
         case PARSE_AND_SERIALIZE:
             // Read output file
@@ -119,7 +120,6 @@ CommandArgs* read_command(FILE* source) {
         case DESERIALIZE_AND_PRINT:
             break;
         case DESERIALIZE_FILTER_AND_PRINT:
-            uint32_t n_filters;
             scanf("%u", &n_filters);
 
             FilterArgs* tail = NULL;
@@ -150,8 +150,8 @@ CommandArgs* read_command(FILE* source) {
             }
             break;
         case DESERIALIZE_SEARCH_RRN_AND_PRINT:
-            SearchByRRNArgs* rrn_args = malloc(sizeof(struct SearchByRRNArgs));
-            fscanf(source, "%llu", &rrn_args->rrn);
+            rrn_args = malloc(sizeof(struct SearchByRRNArgs));
+            fscanf(source, "%lu", &rrn_args->rrn);
             args->specificData = rrn_args;
             break;
     }

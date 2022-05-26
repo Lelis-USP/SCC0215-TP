@@ -57,20 +57,6 @@ typedef struct T1Registry {
   char* modelo;
 } T1Registry;
 
-static const size_t T1_STATIC_REGISTRY_SIZE = member_size(T1Registry, removido)
-                                       + member_size(T1Registry, prox)
-                                       + member_size(T1Registry, id)
-                                       + member_size(T1Registry, ano)
-                                       + member_size(T1Registry, qtt)
-                                       + member_size(T1Registry, sigla)
-                                       + member_size(T1Registry, tamCidade)
-                                       + member_size(T1Registry, codC5)
-                                       + member_size(T1Registry, tamMarca)
-                                       + member_size(T1Registry, codC6)
-                                       + member_size(T1Registry, tamModelo)
-                                       + member_size(T1Registry, codC7);
-
-
 size_t t1_write_header(T1Header* header, FILE* dest);
 T1Header* t1_read_header(FILE* src);
 

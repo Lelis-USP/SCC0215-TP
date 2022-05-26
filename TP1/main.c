@@ -2,6 +2,7 @@
 #include <assert.h>
 
 #include "struct/t1_struct.h"
+#include "struct/common.h"
 #include "const/const.h"
 #include "utils/csv_parser.h"
 

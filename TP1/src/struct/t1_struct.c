@@ -1,102 +1,257 @@
 
-#include <assert.h>
-
 #include "t1_struct.h"
 
-// TO-DO: should I do custom exception handling instead of asserts?
+#include <assert.h>
+#include <stdlib.h>
+#include <string.h>
+
+// TO-DO: should I do custom exception handling instead of asserts? Yes you dumbass (from me to myself)
 
 /**
- * Writes the header into a file pointer.
+ * Write a header struct to a file (at the current position, no seeking)
  *
- * @param dest target file (must be writable and in binary mode)
- * @param header header to be serialized into the file
+ * @param header header struct to be written
+ * @param dest destination file
+ * @return amount of bytes written
  */
-void t1_write_header(T1Header* header, FILE* dest) {
-  // TO-DO: Should I use a local memory buffer here to do a single write call?
-  // TO-DO: Should I check for fwrite failures (return < 1)?
+size_t t1_write_header(T1Header* header, FILE* dest) {
+    /**
+     * Checklist:
+     * - Shall I use a local memory buffer to write everything in a single call? (I guess there wouldn't be benefits, if anything memory management problems)
+     * - Shall I check for write failures here? (Kinda addressed it by returning total written bytes)
+     */
 
-  // Basic input validation
-  assert(dest != NULL);
-  assert(header != NULL);
+    // Basic validation
+    assert(header != NULL);
+    assert(dest != NULL);
 
-  // Write data in order to the file
-  fwrite(&header->status, member_size(T1Header, status), 1, dest);
-  fwrite(&header->topo, member_size(T1Header, topo), 1, dest);
-  fwrite(header->descricao, member_size(T1Header, descricao), 1, dest);
-  fwrite(header->desC1, member_size(T1Header, desC1), 1, dest);
-  fwrite(header->desC2, member_size(T1Header, desC2), 1, dest);
-  fwrite(header->desC3, member_size(T1Header, desC3), 1, dest);
-  fwrite(header->desC4, member_size(T1Header, desC4), 1, dest);
-  fwrite(header->codC5, member_size(T1Header, codC5), 1, dest);
-  fwrite(header->desC5, member_size(T1Header, desC5), 1, dest);
-  fwrite(header->codC6, member_size(T1Header, codC6), 1, dest);
-  fwrite(header->desC6, member_size(T1Header, desC6), 1, dest);
-  fwrite(header->codC7, member_size(T1Header, codC7), 1, dest);
-  fwrite(header->desC7, member_size(T1Header, desC7), 1, dest);
-  fwrite(&header->proxRRN, member_size(T1Header, proxRRN), 1, dest);
-  fwrite(&header->nroRegRem, member_size(T1Header, nroRegRem), 1, dest);
+    // Writing
+    size_t written_bytes = 0;
+
+    // Tidy af (https://bit.ly/3MRaPk3)
+    // Write struct's fields in order (to see how the macro works, take a look at common.h)
+    written_bytes += fwrite_member_field(header, status, dest);
+    written_bytes += fwrite_member_field(header, topo, dest);
+    written_bytes += fwrite_member_field(header, descricao, dest);
+    written_bytes += fwrite_member_field(header, desC1, dest);
+    written_bytes += fwrite_member_field(header, desC2, dest);
+    written_bytes += fwrite_member_field(header, desC3, dest);
+    written_bytes += fwrite_member_field(header, desC4, dest);
+    written_bytes += fwrite_member_field(header, codC5, dest);
+    written_bytes += fwrite_member_field(header, desC5, dest);
+    written_bytes += fwrite_member_field(header, codC6, dest);
+    written_bytes += fwrite_member_field(header, desC6, dest);
+    written_bytes += fwrite_member_field(header, codC7, dest);
+    written_bytes += fwrite_member_field(header, desC7, dest);
+    written_bytes += fwrite_member_field(header, proxRRN, dest);
+    written_bytes += fwrite_member_field(header, nroRegRem, dest);
+
+    return written_bytes;
 }
 
 /**
- * Reads the header from a file into the given header struct
+ * Read a header struct from a file (at the current position, no seeking)
  *
- * @param src source file (must be readable and in binary mode)
- * @param header target header
+ * @param src source file
+ * @return the read header (NULL if failed)
  */
-void t1_read_header(T1Header* header, FILE* src) {
-  // Basic input validation
-  assert(src != NULL);
-  assert(header != NULL);
+T1Header* t1_read_header(FILE* src) {
+    /**
+     * Checklist:
+     * Shall I check for read failures for every field (to catch an early EOF for example)
+     */
+    T1Header* header = t1_new_header();
+    if (header == NULL) {
+        return header;
+    }
 
-  // Read data into header
-  fread(&header->status, member_size(T1Header, status), 1, src);
-  fread(&header->topo, member_size(T1Header, topo), 1, src);
-  fread(header->descricao, member_size(T1Header, descricao), 1, src);
-  fread(header->desC1, member_size(T1Header, desC1), 1, src);
-  fread(header->desC2, member_size(T1Header, desC2), 1, src);
-  fread(header->desC3, member_size(T1Header, desC3), 1, src);
-  fread(header->desC4, member_size(T1Header, desC4), 1, src);
-  fread(header->codC5, member_size(T1Header, codC5), 1, src);
-  fread(header->desC5, member_size(T1Header, desC5), 1, src);
-  fread(header->codC6, member_size(T1Header, codC6), 1, src);
-  fread(header->desC6, member_size(T1Header, desC6), 1, src);
-  fread(header->codC7, member_size(T1Header, codC7), 1, src);
-  fread(header->desC7, member_size(T1Header, desC7), 1, src);
-  fread(&header->proxRRN, member_size(T1Header, proxRRN), 1, src);
-  fread(&header->nroRegRem, member_size(T1Header, nroRegRem), 1, src);
+    // Read struct's fields in order
+
+    // Measure read bytes for the first field, if 0 there was a failure, stop from here. if 1, assume that everything is fine
+    size_t read_bytes = 0;
+    read_bytes += fread_member_field(header, status, src);
+
+    if (read_bytes == 0) {
+        t1_destroy_header(header);
+        return NULL;
+    }
+
+    read_bytes += fread_member_field(header, topo, src);
+    read_bytes += fread_member_field(header, descricao, src);
+    read_bytes += fread_member_field(header, desC1, src);
+    read_bytes += fread_member_field(header, desC2, src);
+    read_bytes += fread_member_field(header, desC3, src);
+    read_bytes += fread_member_field(header, desC4, src);
+    read_bytes += fread_member_field(header, codC5, src);
+    read_bytes += fread_member_field(header, desC5, src);
+    read_bytes += fread_member_field(header, codC6, src);
+    read_bytes += fread_member_field(header, desC6, src);
+    read_bytes += fread_member_field(header, codC7, src);
+    read_bytes += fread_member_field(header, desC7, src);
+    read_bytes += fread_member_field(header, proxRRN, src);
+    read_bytes += fread_member_field(header, nroRegRem, src);
+
+    return header;
 }
 
+
 /**
- * Writes the a registry into the given file pointer.
+ * Writes a registry into a given file
  *
- * @param dest destination file pointer
- * @param registry the registry to be serializes into file
+ * @param registry the registry to be written into the file
+ * @param dest destination file
+ * @return number of bytes written
  */
 size_t t1_write_registry(T1Registry* registry, FILE* dest) {
-  // Basic input validation
-  assert(dest != NULL);
-  assert(registry != NULL);
+    // Basic validation
+    assert(registry != NULL);
+    assert(dest != NULL);
 
-  size_t len_cidade = sizeof(char) * registry->tamCidade;
-  size_t len_marca = sizeof(char) * registry->tamCidade;
-  size_t len_modelo = sizeof(char) * registry->tamCidade;
+    // Total fields written
+    size_t written_bytes = 0;
 
-  // Write data to file
-  fwrite(&registry->removido, member_size(T1Registry, removido), 1, dest);
-  fwrite(&registry->prox, member_size(T1Registry, prox), 1, dest);
-  fwrite(&registry->id, member_size(T1Registry, id), 1, dest);
-  fwrite(&registry->ano, member_size(T1Registry, ano), 1, dest);
-  fwrite(&registry->qtt, member_size(T1Registry, qtt), 1, dest);
+    // Write fixed length fields to file
+    written_bytes += fwrite_member_field(registry, removido, dest);
+    written_bytes += fwrite_member_field(registry, prox, dest);
+    written_bytes += fwrite_member_field(registry, id, dest);
+    written_bytes += fwrite_member_field(registry, ano, dest);
+    written_bytes += fwrite_member_field(registry, qtt, dest);
+    written_bytes += fwrite_member_field(registry, sigla, dest);
 
-  fwrite(registry->sigla, sizeof(char), member_size(T1Registry, sigla), dest);
+    // Write variable length fields to file
+    written_bytes += fwrite_member_var_len_str(registry, cidade, tamCidade, codC5, dest);
+    written_bytes += fwrite_member_var_len_str(registry, marca, tamMarca, codC6, dest);
+    written_bytes += fwrite_member_var_len_str(registry, modelo, tamModelo, codC7, dest);
 
-  write_var_len_str(registry->cidade, registry->tamCidade, registry->codC5, dest);
-  write_var_len_str(registry->marca, registry->tamMarca, registry->codC6, dest);
-  write_var_len_str(registry->modelo, registry->tamModelo, registry->codC7, dest);
+    // Fill remaining bytes
+    size_t missing_bytes = T1_TOTAL_REGISTRY_SIZE - written_bytes;
+    fill_bytes(missing_bytes, dest);
 
-  size_t filled_bytes = T1_STATIC_REGISTRY_SIZE + len_modelo + len_marca + len_cidade;
-  size_t missing_bytes = T1_TOTAL_REGISTRY_SIZE - filled_bytes;
+    return written_bytes;
+}
 
-  // Fill remaining bytes for run.codes autocorrect
-  fill_bytes(missing_bytes, dest);
+
+T1Registry* t1_read_registry(FILE* src) {
+    T1Registry* registry = t1_new_registry();
+    if (registry == NULL) {
+        return registry;
+    }
+
+    // Read struct's fields in order
+
+    // Measure read bytes for the first field, if 0 there was a failure, stop from here. if 1, assume that everything is fine
+    size_t read_bytes = fread_member_field(registry, removido, src);
+    if (read_bytes == 0) {
+        t1_destroy_registry(registry);
+        return NULL;
+    }
+
+    // Read fixed length fields
+    read_bytes += fread_member_field(registry, prox, src);
+    read_bytes += fread_member_field(registry, id, src);
+    read_bytes += fread_member_field(registry, ano, src);
+    read_bytes += fread_member_field(registry, qtt, src);
+    read_bytes += fread_member_field(registry, sigla, src);
+
+    // Read variable length fields
+    for (uint8_t i = 0; i < 3; i++) {
+        VarLenStrField var_len_field = fread_var_len_str(src);
+        read_bytes += var_len_field.read_bytes;
+
+        // Null field, no more fields remaining, break
+        if (var_len_field.data == NULL) {
+            break;
+        }
+
+        /**
+         * Was it overkill to declare the code as an array of chars and handle it like that instead of a normal single char?
+         * perhaps, but I ain't going back now
+         */
+
+        // Fill appropriate column based on the column code
+        if (strncmp(var_len_field.code, "0", CODE_FIELD_LEN) == 0) {
+            registry->tamCidade = var_len_field.size;
+            memcpy(registry->codC5, var_len_field.code, CODE_FIELD_LEN * sizeof (char));
+            registry->cidade = var_len_field.data;
+        } else if (strncmp(var_len_field.code, "1", CODE_FIELD_LEN) == 0) {
+            registry->tamMarca = var_len_field.size;
+            memcpy(registry->codC6, var_len_field.code, CODE_FIELD_LEN * sizeof (char));
+            registry->marca = var_len_field.data;
+        } else if (strncmp(var_len_field.code, "2", CODE_FIELD_LEN) == 0) {
+            registry->tamModelo = var_len_field.size;
+            memcpy(registry->codC7, var_len_field.code, CODE_FIELD_LEN * sizeof (char));
+            registry->modelo = var_len_field.data;
+        } else {
+            assert(0 && "Invalid column code");
+        }
+    }
+
+    // Skip remaining bytes to be ready at the next RRN
+    size_t remaining_bytes = T1_TOTAL_REGISTRY_SIZE - read_bytes;
+    fseek(src, (long) remaining_bytes, SEEK_CUR);
+
+    return registry;
+}
+
+// Constructors & Destructors //
+
+/**
+ * Allocate a new header and setup some of its fields to ensure consistent behaviour
+ * @return the newly allocated header
+ */
+T1Header* t1_new_header() {
+        T1Header* header = malloc(sizeof (struct T1Header));
+        assert(header != NULL);
+
+        header->status = STATUS_BAD;
+        header->topo = -1;
+        header->proxRRN = 0;
+        header->nroRegRem = 0;
+        return header;
+}
+
+/**
+ * Allocate a new registry and setup some of its fields to ensure consistent behaviour
+ * @return the newly allocated registry
+ */
+T1Registry* t1_new_registry() {
+    T1Registry* registry = malloc(sizeof (struct T1Registry));
+    assert(registry != NULL);
+
+    registry->removido = NOT_REMOVED;
+    registry->prox = -1;
+    registry->tamCidade = 0;
+    registry->cidade = NULL;
+    registry->tamMarca = 0;
+    registry->marca = NULL;
+    registry->tamModelo = 0;
+    registry->modelo = NULL;
+    return registry;
+}
+
+/**
+ * Destroy a header struct and its heap-allocated fields (if it had any)
+ * @param header the header ptr to be freed
+ */
+void t1_destroy_header(T1Header* header) {
+    if (header == NULL) {
+        return;
+    }
+
+    free(header);
+}
+
+/**
+ * Destroy a registry struct and its heap-allocated fields
+ * @param registry the registry ptr to be freed
+ */
+void t1_destroy_registry(T1Registry* registry) {
+    if (registry == NULL) {
+        return;
+    }
+
+    free(registry->cidade);
+    free(registry->marca);
+    free(registry->modelo);
+    free(registry);
 }
