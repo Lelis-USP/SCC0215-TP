@@ -130,7 +130,12 @@ size_t t1_write_registry(T1Registry* registry, FILE* dest) {
     return written_bytes;
 }
 
-
+/**
+ * Read a registry from the current file position
+ *
+ * @param src source file
+ * @return the read registry
+ */
 T1Registry* t1_read_registry(FILE* src) {
     T1Registry* registry = t1_new_registry();
     if (registry == NULL) {

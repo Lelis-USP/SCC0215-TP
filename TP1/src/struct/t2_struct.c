@@ -91,12 +91,15 @@ T2Header* t2_read_header(FILE* src) {
     return header;
 }
 
+/**
+ * Computes the size the registry will fill when serialized
+ * @param registry registry to be measured
+ * @return the registry serialized size (without considering removed flag and the size field)
+ */
 size_t t2_registry_size(T2Registry* registry) {
     size_t size = 0;
 
-    // Static fields
-    size += sizeof (registry->removido);
-    size += sizeof (registry->tamanhoRegistro);
+    // Static fields (without removed and registry size)
     size += sizeof (registry->prox);
     size += sizeof(registry->id);
     size += sizeof(registry->ano);
@@ -107,19 +110,19 @@ size_t t2_registry_size(T2Registry* registry) {
     if (registry->tamCidade != 0 && registry->cidade != NULL) {
         size += sizeof(registry->tamCidade);
         size += sizeof(registry->codC5);
-        size += sizeof(char) + registry->tamCidade;
+        size += sizeof(char) * registry->tamCidade;
     }
 
     if (registry->tamMarca!= 0 && registry->marca != NULL) {
         size += sizeof(registry->tamMarca);
         size += sizeof(registry->codC6);
-        size += sizeof(char) + registry->tamMarca;
+        size += sizeof(char) * registry->tamMarca;
     }
 
     if (registry->tamModelo != 0 && registry->modelo != NULL) {
         size += sizeof(registry->tamModelo);
         size += sizeof(registry->codC7);
-        size += sizeof(char) + registry->tamModelo;
+        size += sizeof(char) * registry->tamModelo;
     }
 
     return size;
@@ -158,12 +161,17 @@ size_t t2_write_registry(T2Registry* registry, FILE* dest) {
     written_bytes += fwrite_member_var_len_str(registry, modelo, tamModelo, codC7, dest);
 
     // Sanity check that the amount of bytes written is the expected size
-    assert(written_bytes == registry->tamanhoRegistro);
+    assert(written_bytes == registry->tamanhoRegistro + t2_ignored_size);
 
     return written_bytes;
 }
 
-
+/**
+ * Read a registry from the current file position
+ *
+ * @param src source file
+ * @return the read registry
+ */
 T2Registry* t2_read_registry(FILE* src) {
     T2Registry* registry = t2_new_registry();
     if (registry == NULL) {
@@ -188,7 +196,7 @@ T2Registry* t2_read_registry(FILE* src) {
     read_bytes += fread_member_field(registry, sigla, src);
 
     // Read variable length fields
-    while (read_bytes < registry->tamanhoRegistro) {
+    while (read_bytes < registry->tamanhoRegistro + t2_ignored_size) {
         VarLenStrField var_len_field = fread_var_len_str(src);
         read_bytes += var_len_field.read_bytes;
 
@@ -215,8 +223,8 @@ T2Registry* t2_read_registry(FILE* src) {
         }
     }
 
-    // Ensure the amound of bytes read follows the expected size
-    assert(read_bytes == registry->tamanhoRegistro);
+    // Ensure the amount of bytes read follows the expected size
+    assert(read_bytes == registry->tamanhoRegistro + t2_ignored_size);
 
     return registry;
 }

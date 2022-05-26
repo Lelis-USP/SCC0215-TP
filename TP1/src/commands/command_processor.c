@@ -14,6 +14,7 @@
 CommandArgs* new_command_args(enum Command command) {
     CommandArgs* args = malloc(sizeof(struct CommandArgs));
 
+    args->command = command;
     args->sourceFile = NULL;
     args->destFile = NULL;
     args->source = NULL;
@@ -97,8 +98,9 @@ CommandArgs* read_command(FILE* source) {
     args->fileType = TYPE2;
     if (strncasecmp("tipo1", buffer, 6) == 0) {
         args->fileType = TYPE1;
+    } else {
+        assert(strncasecmp("tipo2", buffer, 6) == 0); // If not "tipo1", assert that the input was "tipo2"
     }
-    assert(strncasecmp("tipo2", buffer, 6) == 0); // If not "tipo1", assert that the input was "tipo2"
 
     // Read input file path
     fscanf(source, "%511s", buffer); // Read up to buffer size or separator

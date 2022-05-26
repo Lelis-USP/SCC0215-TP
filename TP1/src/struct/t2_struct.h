@@ -40,7 +40,7 @@ typedef struct T2Header {
 
 typedef struct T2Registry {
     char removido;
-    uint64_t tamanhoRegistro;
+    uint32_t tamanhoRegistro;
     int64_t prox;
     int32_t id;
     int32_t ano;
@@ -60,6 +60,8 @@ typedef struct T2Registry {
 size_t t2_write_header(T2Header* header, FILE* dest);
 T2Header* t2_read_header(FILE* src);
 
+// Size of the fields not considered in the registry size field
+static const size_t t2_ignored_size = member_size(T2Registry, removido) + member_size(T2Registry, tamanhoRegistro);
 size_t t2_registry_size(T2Registry* registry);
 size_t t2_write_registry(T2Registry* registry, FILE* dest);
 T2Registry* t2_read_registry(FILE* src);

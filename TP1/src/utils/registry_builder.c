@@ -41,12 +41,10 @@ void registry_load_csv_var_len_str(CSVField* field, char** str_field_ptr, strlen
  * @param int_field_ptr target field ptr
  */
 void registry_load_csv_int32(CSVField* field, int32_t* int_field_ptr) {
-    char *conversion_failure = NULL;
     if (field->content_len == 0) {
         (*int_field_ptr) = -1;
     } else {
-        (*int_field_ptr) = (int32_t) strtol(field->content, &conversion_failure, 10);
-        assert(conversion_failure == NULL);
+        (*int_field_ptr) = (int32_t) strtol(field->content, NULL, 10);
     }
 }
 
@@ -57,7 +55,9 @@ void registry_load_csv_int32(CSVField* field, int32_t* int_field_ptr) {
  */
 void registry_load_csv_sigla(CSVField* field, char* sigla) {
     // Copy sigla
-    memcpy(sigla, field->content, max(REGISTRY_SIGLA_SIZE, field->content_len));
+    if (field->content != NULL) {
+        memcpy(sigla, field->content, max(REGISTRY_SIGLA_SIZE, field->content_len));
+    }
     // Fill remaining bytes
     for (size_t j = field->content_len; j < REGISTRY_SIGLA_SIZE; j++) {
         sigla[j] = FILLER_BYTE[0];
