@@ -22,6 +22,7 @@ CSVHeader* new_csvheader() {
  */
 CSVField* new_csvfield() {
     CSVField* field = malloc(sizeof(struct CSVField));
+    field->content_len = 0;
     field->content = NULL;
     field->next = NULL;
     return field;

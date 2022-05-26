@@ -188,6 +188,7 @@ void c_parse_and_serialize(CommandArgs* args) {
             t1_write_registry(registry, dest_file);
             current_line = current_line->next;
             header.proxRRN++;
+            t1_destroy_registry(registry);
         }
 
         // Update status at beginning
@@ -207,6 +208,7 @@ void c_parse_and_serialize(CommandArgs* args) {
             size_t written_bytes = t2_write_registry(registry, dest_file);
             current_line = current_line->next;
             header.proxByteOffset += (int64_t) written_bytes;
+            t2_destroy_registry(registry);
         }
 
         // Update status at beginning
@@ -221,6 +223,16 @@ void c_parse_and_serialize(CommandArgs* args) {
     destroy_csvcontent(csv_content); // Free CSVContent's memory
 }
 
-void c_deserialize_and_print(CommandArgs* args) {}
+void c_deserialize_and_print(CommandArgs* args) {
+    assert(args->sourceFile != NULL);
+
+    FILE* file = fopen(args->sourceFile, "rb");
+    if (args->fileType == TYPE1) {
+        T1Header* header = t1_read_header(file);
+    } else {
+
+    }
+}
+
 void c_deserialize_filter_and_print(CommandArgs* args) {}
 void c_deserialize_search_rrn_and_print(CommandArgs* args) {}
