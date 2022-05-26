@@ -60,6 +60,7 @@ typedef struct T2Registry {
 size_t t2_write_header(T2Header* header, FILE* dest);
 T2Header* t2_read_header(FILE* src);
 
+size_t t2_registry_size(T2Registry* registry);
 size_t t2_write_registry(T2Registry* registry, FILE* dest);
 T2Registry* t2_read_registry(FILE* src);
 
