@@ -9,13 +9,10 @@
 #include <string.h>
 
 #include "common.h"
-#include "const/const.h"
-#include "struct/common.h"
-#include "struct/t1_struct.h"
-#include "struct/t2_struct.h"
-#include "utils/csv_parser.h"
-#include "utils/provided_functions.h"
-#include "utils/registry_builder.h"
+#include "../const/const.h"
+#include "../utils/csv_parser.h"
+#include "../utils/provided_functions.h"
+#include "../utils/registry_builder.h"
 
 
 // Commands //

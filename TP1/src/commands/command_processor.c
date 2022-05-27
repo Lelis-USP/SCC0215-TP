@@ -10,8 +10,7 @@
 
 #include "commands.h"
 #include "common.h"
-#include "struct/common.h"
-#include "utils/provided_functions.h"
+#include "../utils/provided_functions.h"
 
 
 /**

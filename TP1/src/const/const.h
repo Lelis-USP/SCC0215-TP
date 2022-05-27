@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include "struct/t1_struct.h"
-#include "struct/t2_struct.h"
+#include "../struct/t1_struct.h"
+#include "../struct/t2_struct.h"
 
 static const T1Header DEFAULT_T1_HEADER = {
         STATUS_GOOD,

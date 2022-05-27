@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "const/const.h"
+#include "../const/const.h"
 
 /**
  * Maximum of two elements macro

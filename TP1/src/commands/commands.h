@@ -7,8 +7,8 @@
 #include <stdbool.h>
 
 #include "common.h"
-#include "struct/t1_struct.h"
-#include "struct/t2_struct.h"
+#include "../struct/t1_struct.h"
+#include "../struct/t2_struct.h"
 
 // Commands //
 void c_parse_and_serialize(CommandArgs* args);

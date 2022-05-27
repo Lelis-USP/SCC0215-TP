@@ -2,7 +2,7 @@
 *  Daniel Henrique Lelis de Almeida - 12543822
 */
 
-#include "utils/csv_parser.h"
+#include "csv_parser.h"
 
 #include <assert.h>
 #include <stdlib.h>
