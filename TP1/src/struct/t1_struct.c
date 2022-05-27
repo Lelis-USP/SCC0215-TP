@@ -66,7 +66,7 @@ size_t t1_read_header(T1Header* header, FILE* src) {
         return 0;
     }
 
-    t1_setup_header(header); // Place default data into header
+    t1_setup_header(header);// Place default data into header
 
     // Read struct's fields in order
 
@@ -147,7 +147,7 @@ size_t t1_read_registry(T1Registry* registry, FILE* src) {
     free(registry->cidade);
     free(registry->marca);
     free(registry->modelo);
-    t1_setup_registry(registry); // Place default data into registry
+    t1_setup_registry(registry);// Place default data into registry
 
     // Read struct's fields in order
 
@@ -182,15 +182,15 @@ size_t t1_read_registry(T1Registry* registry, FILE* src) {
         // Fill appropriate column based on the column code
         if (strncmp(var_len_field.code, "0", CODE_FIELD_LEN) == 0) {
             registry->tamCidade = var_len_field.size;
-            memcpy(registry->codC5, var_len_field.code, CODE_FIELD_LEN * sizeof (char));
+            memcpy(registry->codC5, var_len_field.code, CODE_FIELD_LEN * sizeof(char));
             registry->cidade = var_len_field.data;
         } else if (strncmp(var_len_field.code, "1", CODE_FIELD_LEN) == 0) {
             registry->tamMarca = var_len_field.size;
-            memcpy(registry->codC6, var_len_field.code, CODE_FIELD_LEN * sizeof (char));
+            memcpy(registry->codC6, var_len_field.code, CODE_FIELD_LEN * sizeof(char));
             registry->marca = var_len_field.data;
         } else if (strncmp(var_len_field.code, "2", CODE_FIELD_LEN) == 0) {
             registry->tamModelo = var_len_field.size;
-            memcpy(registry->codC7, var_len_field.code, CODE_FIELD_LEN * sizeof (char));
+            memcpy(registry->codC7, var_len_field.code, CODE_FIELD_LEN * sizeof(char));
             registry->modelo = var_len_field.data;
         } else {
             assert(0 && "Invalid column code");
@@ -242,10 +242,10 @@ void t1_setup_registry(T1Registry* registry) {
  * @return the newly allocated header
  */
 T1Header* t1_new_header() {
-        T1Header* header = malloc(sizeof (struct T1Header));
-        assert(header != NULL);
-        t1_setup_header(header);
-        return header;
+    T1Header* header = malloc(sizeof(struct T1Header));
+    assert(header != NULL);
+    t1_setup_header(header);
+    return header;
 }
 
 /**
@@ -253,7 +253,7 @@ T1Header* t1_new_header() {
  * @return the newly allocated registry
  */
 T1Registry* t1_new_registry() {
-    T1Registry* registry = malloc(sizeof (struct T1Registry));
+    T1Registry* registry = malloc(sizeof(struct T1Registry));
     assert(registry != NULL);
     t1_setup_registry(registry);
     return registry;

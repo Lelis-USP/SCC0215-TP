@@ -4,6 +4,6 @@
 
 #pragma once
 
-void readline(char* string);
+void readline(char *string);
 void print_autocorrection_checksum(char *nomeArquivoBinario);
 void scan_quote_string(char *str);

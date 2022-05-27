@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 
 enum Command {
     PARSE_AND_SERIALIZE = 1,

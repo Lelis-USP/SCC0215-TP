@@ -8,9 +8,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common.h"
 #include "commands.h"
-
+#include "common.h"
 #include "struct/common.h"
 #include "utils/provided_functions.h"
 
@@ -58,19 +57,19 @@ CommandArgs* read_command(FILE* source) {
     CommandArgs* args = new_command_args(command);
 
     // Read file type
-    char buffer[512]; // Static buffer, should be enough for most cases
-    fscanf(source, "%511s", buffer); // Read up to buffer size or separator
+    char buffer[512];               // Static buffer, should be enough for most cases
+    fscanf(source, "%511s", buffer);// Read up to buffer size or separator
 
     // Check if a valid file type was inserted
     args->fileType = TYPE2;
     if (strncasecmp("tipo1", buffer, 6) == 0) {
         args->fileType = TYPE1;
     } else {
-        assert(strncasecmp("tipo2", buffer, 6) == 0); // If not "tipo1", assert that the input was "tipo2"
+        assert(strncasecmp("tipo2", buffer, 6) == 0);// If not "tipo1", assert that the input was "tipo2"
     }
 
     // Read input file path
-    fscanf(source, "%511s", buffer); // Read up to buffer size or separator
+    fscanf(source, "%511s", buffer);// Read up to buffer size or separator
     size_t path_len = strnlen(buffer, 512);
     args->sourceFile = calloc(path_len + 1, sizeof(char));
     memcpy(args->sourceFile, buffer, path_len);
@@ -82,7 +81,7 @@ CommandArgs* read_command(FILE* source) {
     switch (args->command) {
         case PARSE_AND_SERIALIZE:
             // Read output file
-            fscanf(source, "%511s", buffer); // Read up to buffer size or separator
+            fscanf(source, "%511s", buffer);// Read up to buffer size or separator
             size_t dest_path_len = strnlen(buffer, 512);
             args->destFile = calloc(dest_path_len + 1, sizeof(char));
             memcpy(args->destFile, buffer, dest_path_len);
@@ -96,21 +95,21 @@ CommandArgs* read_command(FILE* source) {
 
             // Build filter list
             FilterArgs* tail = NULL;
-            for (uint32_t i = 0; i  < n_filters; i++) {
-                FilterArgs* new_filter = malloc(sizeof (struct FilterArgs));
+            for (uint32_t i = 0; i < n_filters; i++) {
+                FilterArgs* new_filter = malloc(sizeof(struct FilterArgs));
                 new_filter->next = NULL;
                 new_filter->parsed_value = NULL;
 
                 // Read field name
                 fscanf(source, "%511s", buffer);
                 size_t field_len = strnlen(buffer, 512);
-                new_filter->key = calloc(field_len + 1, sizeof (char));
+                new_filter->key = calloc(field_len + 1, sizeof(char));
                 memcpy(new_filter->key, buffer, field_len);
 
                 // Read value
                 scan_quote_string(buffer);
                 size_t value_len = strnlen(buffer, 512);
-                new_filter->value = calloc(value_len + 1, sizeof (char));
+                new_filter->value = calloc(value_len + 1, sizeof(char));
                 memcpy(new_filter->value, buffer, value_len);
 
                 // Update list tail ref

@@ -7,7 +7,6 @@
 #include <stdbool.h>
 
 #include "common.h"
-
 #include "struct/t1_struct.h"
 #include "struct/t2_struct.h"
 
@@ -27,4 +26,4 @@ bool t2_registry_filter_match(T2Registry* registry, FilterArgs* filters);
 
 // Macros //
 // Macro for printing a column description
-#define print_column_description(desc) print_fixed_len_str(desc, sizeof(desc)/sizeof(char))
+#define print_column_description(desc) print_fixed_len_str(desc, sizeof(desc) / sizeof(char))

@@ -4,9 +4,9 @@
 
 #include "utils/csv_parser.h"
 
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 /**
  * Allocate and preset a new CSVHeader
@@ -37,7 +37,7 @@ CSVField* new_csvfield() {
  * @return
  */
 CSVLine* new_csvline() {
-    CSVLine* line = malloc(sizeof (struct CSVLine));
+    CSVLine* line = malloc(sizeof(struct CSVLine));
     line->n_fields = 0;
     line->head_field = NULL;
     line->next = NULL;
@@ -49,7 +49,7 @@ CSVLine* new_csvline() {
  * @return
  */
 CSVContent* new_csvcontent() {
-    CSVContent* content = malloc(sizeof (struct CSVContent));
+    CSVContent* content = malloc(sizeof(struct CSVContent));
     content->header = new_csvheader();
     content->n_rows = 0;
     content->head_line = NULL;
@@ -163,7 +163,7 @@ CSVContent* read_csv(FILE* csv_file, bool has_header) {
 
                 // Copy buffer into new field
                 if (buffer_idx != 0) {
-                    new_field->content = calloc(buffer_idx + 1, sizeof (char));
+                    new_field->content = calloc(buffer_idx + 1, sizeof(char));
                     memcpy(new_field->content, buffer, buffer_idx);
                     new_field->content[buffer_idx] = '\0';
                     new_field->content_len = buffer_idx;
@@ -201,7 +201,7 @@ CSVContent* read_csv(FILE* csv_file, bool has_header) {
                         cur_line = cur_line->next;
                         cur_field = NULL;
                     }
-                } else if (cur_char == EOF) { // If last line is empty, remove it
+                } else if (cur_char == EOF) {// If last line is empty, remove it
                     tail_line->next = NULL;
                     destroy_csvline(cur_line);
                 }
@@ -211,7 +211,7 @@ CSVContent* read_csv(FILE* csv_file, bool has_header) {
                 break;
             }
 
-            continue ;
+            continue;
         }
 
         // Prevent buffer overflow
@@ -229,14 +229,14 @@ CSVContent* read_csv(FILE* csv_file, bool has_header) {
         CSVLine* header_line = content->head_line;
 
         // Allocate char* titles array
-        content->header->titles = malloc(sizeof(void *) * header_line->n_fields);
+        content->header->titles = malloc(sizeof(void*) * header_line->n_fields);
 
         // Load titles into CSVHeader
         cur_field = header_line->head_field;
         uint32_t idx = 0;
         while (cur_field != NULL) {
             content->header->titles[idx] = cur_field->content;
-            cur_field->content = NULL; // Prevent freeing the string
+            cur_field->content = NULL;// Prevent freeing the string
 
             // Iterate
             cur_field = cur_field->next;

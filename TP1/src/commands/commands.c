@@ -9,7 +9,6 @@
 #include <string.h>
 
 #include "common.h"
-
 #include "const/const.h"
 #include "struct/common.h"
 #include "struct/t1_struct.h"
@@ -33,7 +32,7 @@ void c_parse_and_serialize(CommandArgs* args) {
     FILE* csv_file = fopen(args->sourceFile, "r");
     if (csv_file == NULL) {
         puts(FILE_ERROR_MSG);
-        return ;
+        return;
     }
 
     // Load CSV Content
@@ -44,12 +43,12 @@ void c_parse_and_serialize(CommandArgs* args) {
     FILE* dest_file = fopen(args->destFile, "wb");
     if (dest_file == NULL) {
         puts(FILE_ERROR_MSG);
-        return ;
+        return;
     }
 
     if (args->fileType == TYPE1) {
         // Write default header with a bad status
-        T1Header header = DEFAULT_T1_HEADER; // Copy default T1Header
+        T1Header header = DEFAULT_T1_HEADER;// Copy default T1Header
         header.status = STATUS_BAD;
         t1_write_header(&header, dest_file);
 
@@ -69,7 +68,7 @@ void c_parse_and_serialize(CommandArgs* args) {
         t1_write_header(&header, dest_file);
     } else {
         // Write default header with a bad status
-        T2Header header = DEFAULT_T2_HEADER; // Copy default T1Header
+        T2Header header = DEFAULT_T2_HEADER;// Copy default T1Header
         header.status = STATUS_BAD;
         t2_write_header(&header, dest_file);
 
@@ -92,7 +91,7 @@ void c_parse_and_serialize(CommandArgs* args) {
 
     print_autocorrection_checksum(args->destFile);
 
-    destroy_csvcontent(csv_content); // Free CSVContent's memory
+    destroy_csvcontent(csv_content);// Free CSVContent's memory
 }
 
 /**
@@ -106,7 +105,7 @@ void c_deserialize_and_print(CommandArgs* args) {
 
     if (file == NULL) {
         puts(FILE_ERROR_MSG);
-        return ;
+        return;
     }
 
     if (args->fileType == TYPE1) {
@@ -179,7 +178,7 @@ void c_deserialize_filter_and_print(CommandArgs* args) {
     FILE* file = fopen(args->sourceFile, "rb");
     if (file == NULL) {
         puts(FILE_ERROR_MSG);
-        return ;
+        return;
     }
 
     if (args->fileType == TYPE1) {
@@ -253,7 +252,7 @@ void c_deserialize_direct_access_rrn_and_print(CommandArgs* args) {
 
     if (file == NULL) {
         puts(FILE_ERROR_MSG);
-        return ;
+        return;
     }
 
     if (args->fileType == TYPE1) {
@@ -410,17 +409,17 @@ int32_t parse_int32_filter(FilterArgs* filter) {
     int32_t value = -1;
 
     // Filter parsing
-    if (filter->parsed_value != NULL)  {
+    if (filter->parsed_value != NULL) {
         value = *((int32_t*) filter->parsed_value);
     } else {
         if (filter->value != NULL && filter->value[0] != '\0') {
             value = (int32_t) strtol(filter->value, NULL, 10);
         }
-        filter->parsed_value = malloc(sizeof (value));
+        filter->parsed_value = malloc(sizeof(value));
         *((int32_t*) filter->parsed_value) = value;
     }
 
-    return  value;
+    return value;
 }
 
 /**
@@ -442,22 +441,22 @@ bool t1_registry_filter_match(T1Registry* registry, FilterArgs* filters) {
 
     while (cur_filter != NULL) {
         bool is_null = cur_filter->value == NULL || cur_filter->value[0] == '\0';
-        if (strcmp(ID_FIELD_NAME, cur_filter->key) == 0) { // id
+        if (strcmp(ID_FIELD_NAME, cur_filter->key) == 0) {// id
             int32_t id_filter = parse_int32_filter(cur_filter);
             if (id_filter != registry->id) {
                 return false;
             }
-        } else if (strcmp(ANO_FIELD_NAME, cur_filter->key) == 0) { // ano
+        } else if (strcmp(ANO_FIELD_NAME, cur_filter->key) == 0) {// ano
             int32_t ano_filter = parse_int32_filter(cur_filter);
             if (ano_filter != registry->ano) {
                 return false;
             }
-        } else if (strcmp(QTT_FIELD_NAME, cur_filter->key) == 0) { // qtt
+        } else if (strcmp(QTT_FIELD_NAME, cur_filter->key) == 0) {// qtt
             int32_t qtt_filter = parse_int32_filter(cur_filter);
             if (qtt_filter != registry->qtt) {
                 return false;
             }
-        } else if (strcmp(SIGLA_FIELD_NAME, cur_filter->key) == 0) { // sigla
+        } else if (strcmp(SIGLA_FIELD_NAME, cur_filter->key) == 0) {// sigla
             // In case filter is NULL, check sigla for null value
             if (cur_filter->value == NULL) {
                 if (registry->sigla[0] != '$') {
@@ -479,34 +478,34 @@ bool t1_registry_filter_match(T1Registry* registry, FilterArgs* filters) {
                     }
                 }
             }
-        } else if (strcmp(CIDADE_FIELD_NAME, cur_filter->key) == 0) { // cidade
+        } else if (strcmp(CIDADE_FIELD_NAME, cur_filter->key) == 0) {// cidade
             // Check for null fields
             if (is_null || registry->cidade == NULL) {
                 // Check for non-matching null fields
                 if ((is_null && registry->cidade != NULL) || (registry->cidade == NULL && is_null)) {
                     return false;
                 }
-            } else if (strcmp(cur_filter->value, registry->cidade) != 0) { // Compare non-null values directly
+            } else if (strcmp(cur_filter->value, registry->cidade) != 0) {// Compare non-null values directly
                 return false;
             }
-        } else if (strcmp(MARCA_FIELD_NAME, cur_filter->key) == 0) { // marca
+        } else if (strcmp(MARCA_FIELD_NAME, cur_filter->key) == 0) {// marca
             // Check for null fields
             if (is_null || registry->marca == NULL) {
                 // Check for non-matching null fields
                 if ((is_null && registry->marca != NULL) || (registry->marca == NULL && is_null)) {
                     return false;
                 }
-            } else if (strcmp(cur_filter->value, registry->marca) != 0) { // Compare non-null values directly
+            } else if (strcmp(cur_filter->value, registry->marca) != 0) {// Compare non-null values directly
                 return false;
             }
-        } else if (strcmp(MODELO_FIELD_NAME, cur_filter->key) == 0) { // modelo
+        } else if (strcmp(MODELO_FIELD_NAME, cur_filter->key) == 0) {// modelo
             // Check for null fields
             if (is_null || registry->modelo == NULL) {
                 // Check for non-matching null fields
                 if ((is_null && registry->modelo != NULL) || (registry->modelo == NULL && is_null)) {
                     return false;
                 }
-            } else if (strcmp(cur_filter->value, registry->modelo) != 0) { // Compare non-null values directly
+            } else if (strcmp(cur_filter->value, registry->modelo) != 0) {// Compare non-null values directly
                 return false;
             }
         }
@@ -537,22 +536,22 @@ bool t2_registry_filter_match(T2Registry* registry, FilterArgs* filters) {
 
     while (cur_filter != NULL) {
         bool is_null = cur_filter->value == NULL || cur_filter->value[0] == '\0';
-        if (strcmp(ID_FIELD_NAME, cur_filter->key) == 0) { // id
+        if (strcmp(ID_FIELD_NAME, cur_filter->key) == 0) {// id
             int32_t id_filter = parse_int32_filter(cur_filter);
             if (id_filter != registry->id) {
                 return false;
             }
-        } else if (strcmp(ANO_FIELD_NAME, cur_filter->key) == 0) { // ano
+        } else if (strcmp(ANO_FIELD_NAME, cur_filter->key) == 0) {// ano
             int32_t ano_filter = parse_int32_filter(cur_filter);
             if (ano_filter != registry->ano) {
                 return false;
             }
-        } else if (strcmp(QTT_FIELD_NAME, cur_filter->key) == 0) { // qtt
+        } else if (strcmp(QTT_FIELD_NAME, cur_filter->key) == 0) {// qtt
             int32_t qtt_filter = parse_int32_filter(cur_filter);
             if (qtt_filter != registry->qtt) {
                 return false;
             }
-        } else if (strcmp(SIGLA_FIELD_NAME, cur_filter->key) == 0) { // sigla
+        } else if (strcmp(SIGLA_FIELD_NAME, cur_filter->key) == 0) {// sigla
             // In case filter is NULL, check sigla for null value
             if (cur_filter->value == NULL) {
                 if (registry->sigla[0] != '$') {
@@ -574,34 +573,34 @@ bool t2_registry_filter_match(T2Registry* registry, FilterArgs* filters) {
                     }
                 }
             }
-        } else if (strcmp(CIDADE_FIELD_NAME, cur_filter->key) == 0) { // cidade
+        } else if (strcmp(CIDADE_FIELD_NAME, cur_filter->key) == 0) {// cidade
             // Check for null fields
             if (is_null || registry->cidade == NULL) {
                 // Check for non-matching null fields
                 if ((is_null && registry->cidade != NULL) || (registry->cidade == NULL && is_null)) {
                     return false;
                 }
-            } else if (strcmp(cur_filter->value, registry->cidade) != 0) { // Compare non-null values directly
+            } else if (strcmp(cur_filter->value, registry->cidade) != 0) {// Compare non-null values directly
                 return false;
             }
-        } else if (strcmp(MARCA_FIELD_NAME, cur_filter->key) == 0) { // marca
+        } else if (strcmp(MARCA_FIELD_NAME, cur_filter->key) == 0) {// marca
             // Check for null fields
             if (is_null || registry->marca == NULL) {
                 // Check for non-matching null fields
                 if ((is_null && registry->marca != NULL) || (registry->marca == NULL && is_null)) {
                     return false;
                 }
-            } else if (strcmp(cur_filter->value, registry->marca) != 0) { // Compare non-null values directly
+            } else if (strcmp(cur_filter->value, registry->marca) != 0) {// Compare non-null values directly
                 return false;
             }
-        } else if (strcmp(MODELO_FIELD_NAME, cur_filter->key) == 0) { // modelo
+        } else if (strcmp(MODELO_FIELD_NAME, cur_filter->key) == 0) {// modelo
             // Check for null fields
             if (is_null || registry->modelo == NULL) {
                 // Check for non-matching null fields
                 if ((is_null && registry->modelo != NULL) || (registry->modelo == NULL && is_null)) {
                     return false;
                 }
-            } else if (strcmp(cur_filter->value, registry->modelo) != 0) { // Compare non-null values directly
+            } else if (strcmp(cur_filter->value, registry->modelo) != 0) {// Compare non-null values directly
                 return false;
             }
         }

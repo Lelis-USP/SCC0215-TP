@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 
 // Types //
 #define strlen_t uint32_t
@@ -50,7 +50,7 @@ size_t fill_bytes(size_t n, FILE* file);
 // Macros //
 
 // Seamlessly retrieve the size of a struct member in compile-time
-#define member_size(type, member) sizeof(((type *)0)->member)
+#define member_size(type, member) sizeof(((type*) 0)->member)
 
 // File manipulation macros
 /**
