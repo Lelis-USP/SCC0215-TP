@@ -1,3 +1,4 @@
 test_zone
 !test-cases/*
 src/main
+!src/Makefile
