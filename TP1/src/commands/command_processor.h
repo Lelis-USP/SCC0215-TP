@@ -1,59 +1,13 @@
+/*
+*  Daniel Henrique Lelis de Almeida - 12543822
+*/
+
 #pragma once
 
 #include <stdio.h>
 #include <stdint.h>
 
-enum Command {
-    PARSE_AND_SERIALIZE = 1,
-    DESERIALIZE_AND_PRINT = 2,
-    DESERIALIZE_FILTER_AND_PRINT = 3,
-    DESERIALIZE_SEARCH_RRN_AND_PRINT = 4
-};
-
-enum FileType {
-    TYPE1 = 1,
-    TYPE2 = 2
-};
-
-typedef struct CommandArgs {
-    enum Command command;
-    enum FileType fileType;
-    char* sourceFile;
-    char* destFile;
-    FILE* source;
-    void* specificData;
-} CommandArgs;
-
-typedef struct SearchByRRNArgs {
-   uint64_t rrn;
-} SearchByRRNArgs;
-
-typedef struct FilterArgs {
-    char* key;
-    char* value;
-    void* parsed_value;
-    struct FilterArgs* next;
-} FilterArgs;
-
-static const char ID_FIELD_NAME[] = "id";
-static const char ANO_FIELD_NAME[] = "ano";
-static const char QTT_FIELD_NAME[] = "qtt";
-static const char SIGLA_FIELD_NAME[] = "sigla";
-static const char CIDADE_FIELD_NAME[] = "cidade";
-static const char MARCA_FIELD_NAME[] = "marca";
-static const char MODELO_FIELD_NAME[] = "modelo";
-
-#define NULL_FIELD_REPR "NAO PREENCHIDO"
-
-CommandArgs* new_command_args(enum Command command);
-void destroy_command_args(CommandArgs* args);
+#include "common.h"
 
 void execute(FILE* data_in);
 CommandArgs* read_command(FILE* source);
-
-void c_parse_and_serialize(CommandArgs* args);
-void c_deserialize_and_print(CommandArgs* args);
-void c_deserialize_filter_and_print(CommandArgs* args);
-void c_deserialize_direct_access_rrn_and_print(CommandArgs* args);
-
-

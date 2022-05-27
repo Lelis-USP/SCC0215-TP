@@ -1,8 +1,18 @@
+/*
+*  Daniel Henrique Lelis de Almeida - 12543822
+*/
+
 #include "common.h"
 
 #include <assert.h>
 #include <stdlib.h>
 
+/**
+ * Write n filler bytes into a file
+ * @param n number of bytes to write
+ * @param file target file
+ * @return number of bytes written
+ */
 size_t fill_bytes(size_t n, FILE* file) {
     size_t written_bytes = 0;
     for (int i = 0; i < n/sizeof(char); i++) {
@@ -11,16 +21,20 @@ size_t fill_bytes(size_t n, FILE* file) {
     return written_bytes;
 }
 
+/**
+ * Write a variable length string into a file
+ * @param str the string to be written
+ * @param len the string length
+ * @param code the column code
+ * @param file the target file
+ * @return number of bytes written
+ */
 size_t fwrite_var_len_str(char* str, strlen_t len, char* code, FILE* file) {
     assert(file != NULL);
 
     size_t written_bytes = 0;
 
     if (len == 0 || str == NULL) {
-//        size_t missing_bytes = sizeof(strlen_t) + sizeof(char) * CODE_FIELD_LEN;
-//        return fill_bytes(missing_bytes, file);
-
-        // As indicated on the specs, if the field is NULL it shouldn't be written at all
         return written_bytes;
     }
 
@@ -37,6 +51,11 @@ size_t fwrite_var_len_str(char* str, strlen_t len, char* code, FILE* file) {
     return written_bytes;
 }
 
+/**
+ * Reads a variable length string from a file
+ * @param file the source file
+ * @return the variable length spring data
+ */
 VarLenStrField fread_var_len_str(FILE* file) {
     assert(file != NULL);
 

@@ -1,3 +1,7 @@
+/*
+*  Daniel Henrique Lelis de Almeida - 12543822
+*/
+
 #include "provided_functions.h"
 
 #include <stdio.h>
@@ -5,26 +9,8 @@
 #include <string.h>
 #include <ctype.h>
 
-void readline(char* string){
-    char c = 0;
-
-    do{
-        c = (char) getchar();
-
-    } while(c == '\n' || c == '\r');
-
-    int i = 0;
-
-    do{
-        string[i] = c;
-        i++;
-        c = getchar();
-    } while(c != '\n' && c != '\r');
-
-    string[i]  = '\0';
-}
-
-void binarioNaTela(char *nomeArquivoBinario) { /* Você não precisa entender o código dessa função. */
+// aka binarioNaTela
+void print_autocorrection_checksum(char *nomeArquivoBinario) { /* Você não precisa entender o código dessa função. */
 
 	/* Use essa função para comparação no run.codes. Lembre-se de ter fechado (fclose) o arquivo anteriormente.
 	*  Ela vai abrir de novo para leitura e depois fechar (você não vai perder pontos por isso se usar ela). */
@@ -34,7 +20,7 @@ void binarioNaTela(char *nomeArquivoBinario) { /* Você não precisa entender o 
 	size_t fl;
 	FILE *fs;
 	if(nomeArquivoBinario == NULL || !(fs = fopen(nomeArquivoBinario, "rb"))) {
-		fprintf(stderr, "ERRO AO ESCREVER O BINARIO NA TELA (função binarioNaTela): não foi possível abrir o arquivo que me passou para leitura. Ele existe e você tá passando o nome certo? Você lembrou de fechar ele com fclose depois de usar?\n");
+		fprintf(stderr, "ERRO AO ESCREVER O BINARIO NA TELA (função print_autocorrection_checksum): não foi possível abrir o arquivo que me passou para leitura. Ele existe e você tá passando o nome certo? Você lembrou de fechar ele com fclose depois de usar?\n");
 		return;
 	}
 	fseek(fs, 0, SEEK_END);
@@ -75,13 +61,13 @@ void scan_quote_string(char *str) {
 		getchar(); getchar(); getchar(); // ignorar o "ULO" de NULO.
 		strcpy(str, ""); // copia string vazia
 	} else if(R == '\"') {
-		if(scanf("%[^\"]", str) != 1) { // ler até o fechamento das aspas
+		if(scanf("%511[^\"]", str) != 1) { // ler até o fechamento das aspas
 			strcpy(str, "");
 		}
 		getchar(); // ignorar aspas fechando
 	} else if(R != EOF){ // vc tá tentando ler uma string que não tá entre aspas! Fazer leitura normal %s então, pois deve ser algum inteiro ou algo assim...
 		str[0] = R;
-		scanf("%s", &str[1]);
+		scanf("%511s", &str[1]);
 	} else { // EOF
 		strcpy(str, "");
 	}

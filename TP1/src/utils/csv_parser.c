@@ -1,3 +1,7 @@
+/*
+*  Daniel Henrique Lelis de Almeida - 12543822
+*/
+
 #include "utils/csv_parser.h"
 
 #include <stdlib.h>
@@ -228,7 +232,7 @@ CSVContent* read_csv(FILE* csv_file, bool has_header) {
         content->header->titles = malloc(sizeof(void *) * header_line->n_fields);
 
         // Load titles into CSVHeader
-        CSVField* cur_field = header_line->head_field;
+        cur_field = header_line->head_field;
         uint32_t idx = 0;
         while (cur_field != NULL) {
             content->header->titles[idx] = cur_field->content;

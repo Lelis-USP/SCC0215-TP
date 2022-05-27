@@ -1,3 +1,7 @@
+/*
+*  Daniel Henrique Lelis de Almeida - 12543822
+*/
+
 #pragma once
 
 #include <stdint.h>
@@ -5,6 +9,7 @@
 
 #include "common.h"
 
+// Types
 // T2Header field sizes
 #define T2_HEADER_DESCRIPTION_SIZE 40
 #define T2_HEADER_DES_C1_SIZE 22
@@ -18,7 +23,6 @@
 #define T2_HEADER_COD_C7_SIZE 1
 #define T2_HEADER_DES_C7_SIZE 19
 #define T2_HEADER_SIZE 190
-
 
 typedef struct T2Header {
     char status;
@@ -57,11 +61,16 @@ typedef struct T2Registry {
     char* modelo;
 } T2Registry;
 
+
+// Consts //
+// Size of the fields not considered in the registry size field
+static const size_t t2_ignored_size = member_size(T2Registry, removido) + member_size(T2Registry, tamanhoRegistro);
+
+
+// Functions //
 size_t t2_write_header(T2Header* header, FILE* dest);
 size_t t2_read_header(T2Header* header, FILE* src);
 
-// Size of the fields not considered in the registry size field
-static const size_t t2_ignored_size = member_size(T2Registry, removido) + member_size(T2Registry, tamanhoRegistro);
 size_t t2_registry_size(T2Registry* registry);
 size_t t2_write_registry(T2Registry* registry, FILE* dest);
 size_t t2_read_registry(T2Registry* registry, FILE* src);

@@ -1,11 +1,12 @@
+/*
+*  Daniel Henrique Lelis de Almeida - 12543822
+*/
 
 #include "t1_struct.h"
 
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-
-// TO-DO: should I do custom exception handling instead of asserts? Yes you dumbass (from me to myself)
 
 /**
  * Write a header struct to a file (at the current position, no seeking)
@@ -203,8 +204,8 @@ size_t t1_read_registry(T1Registry* registry, FILE* src) {
     return read_bytes + remaining_bytes;
 }
 
-// Constructors & Destructors //
 
+// Constructors & Destructors //
 /**
  * Setup header with NULL/default data
  *

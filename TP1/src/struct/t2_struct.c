@@ -1,3 +1,7 @@
+/*
+*  Daniel Henrique Lelis de Almeida - 12543822
+*/
+
 #include "t2_struct.h"
 
 #include <assert.h>
@@ -234,8 +238,8 @@ size_t t2_read_registry(T2Registry* registry, FILE* src) {
     return read_bytes;
 }
 
-// Constructors & Destructors //
 
+// Constructors & Destructors //
 /**
  * Setup header with NULL/default data
  *

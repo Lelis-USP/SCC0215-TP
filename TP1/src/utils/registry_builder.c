@@ -1,6 +1,9 @@
+/*
+*  Daniel Henrique Lelis de Almeida - 12543822
+*/
+
 #include "registry_builder.h"
 
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 

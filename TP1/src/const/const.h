@@ -1,3 +1,7 @@
+/*
+*  Daniel Henrique Lelis de Almeida - 12543822
+*/
+
 #pragma once
 
 #include "struct/t1_struct.h"
@@ -41,3 +45,4 @@ static const T2Header DEFAULT_T2_HEADER = {
 
 static const char EMPTY_REGISTRY_MSG[] = "Registro inexistente.";
 static const char FILE_ERROR_MSG[] = "Falha no processamento do arquivo.";
+static const char NULL_FIELD_REPR[] = "NAO PREENCHIDO";
