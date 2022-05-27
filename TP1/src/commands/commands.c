@@ -482,7 +482,7 @@ bool t1_registry_filter_match(T1Registry* registry, FilterArgs* filters) {
             // Check for null fields
             if (is_null || registry->cidade == NULL) {
                 // Check for non-matching null fields
-                if ((is_null && registry->cidade != NULL) || (registry->cidade == NULL && is_null)) {
+                if ((is_null && registry->cidade != NULL) || (registry->cidade == NULL && !is_null)) {
                     return false;
                 }
             } else if (strcmp(cur_filter->value, registry->cidade) != 0) {// Compare non-null values directly
@@ -492,7 +492,7 @@ bool t1_registry_filter_match(T1Registry* registry, FilterArgs* filters) {
             // Check for null fields
             if (is_null || registry->marca == NULL) {
                 // Check for non-matching null fields
-                if ((is_null && registry->marca != NULL) || (registry->marca == NULL && is_null)) {
+                if ((is_null && registry->marca != NULL) || (registry->marca == NULL && !is_null)) {
                     return false;
                 }
             } else if (strcmp(cur_filter->value, registry->marca) != 0) {// Compare non-null values directly
@@ -502,7 +502,7 @@ bool t1_registry_filter_match(T1Registry* registry, FilterArgs* filters) {
             // Check for null fields
             if (is_null || registry->modelo == NULL) {
                 // Check for non-matching null fields
-                if ((is_null && registry->modelo != NULL) || (registry->modelo == NULL && is_null)) {
+                if ((is_null && registry->modelo != NULL) || (registry->modelo == NULL && !is_null)) {
                     return false;
                 }
             } else if (strcmp(cur_filter->value, registry->modelo) != 0) {// Compare non-null values directly
@@ -577,7 +577,7 @@ bool t2_registry_filter_match(T2Registry* registry, FilterArgs* filters) {
             // Check for null fields
             if (is_null || registry->cidade == NULL) {
                 // Check for non-matching null fields
-                if ((is_null && registry->cidade != NULL) || (registry->cidade == NULL && is_null)) {
+                if ((is_null && registry->cidade != NULL) || (registry->cidade == NULL && !is_null)) {
                     return false;
                 }
             } else if (strcmp(cur_filter->value, registry->cidade) != 0) {// Compare non-null values directly
@@ -587,7 +587,7 @@ bool t2_registry_filter_match(T2Registry* registry, FilterArgs* filters) {
             // Check for null fields
             if (is_null || registry->marca == NULL) {
                 // Check for non-matching null fields
-                if ((is_null && registry->marca != NULL) || (registry->marca == NULL && is_null)) {
+                if ((is_null && registry->marca != NULL) || (registry->marca == NULL && !is_null)) {
                     return false;
                 }
             } else if (strcmp(cur_filter->value, registry->marca) != 0) {// Compare non-null values directly
@@ -597,7 +597,7 @@ bool t2_registry_filter_match(T2Registry* registry, FilterArgs* filters) {
             // Check for null fields
             if (is_null || registry->modelo == NULL) {
                 // Check for non-matching null fields
-                if ((is_null && registry->modelo != NULL) || (registry->modelo == NULL && is_null)) {
+                if ((is_null && registry->modelo != NULL) || (registry->modelo == NULL && !is_null)) {
                     return false;
                 }
             } else if (strcmp(cur_filter->value, registry->modelo) != 0) {// Compare non-null values directly
