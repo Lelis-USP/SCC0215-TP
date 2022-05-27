@@ -4,13 +4,20 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../../cmake-build-debug/bruh/common.h"
 #include "const/const.h"
+#include "struct/common.h"
 #include "struct/t1_struct.h"
 #include "struct/t2_struct.h"
-#include "utils/provided_functions.h"
 #include "utils/csv_parser.h"
+#include "utils/provided_functions.h"
 #include "utils/registry_builder.h"
 
+/**
+ * Create command args struct
+ * @param command target command
+ * @return the struct ptr
+ */
 CommandArgs* new_command_args(enum Command command) {
     CommandArgs* args = malloc(sizeof(struct CommandArgs));
 
@@ -20,15 +27,13 @@ CommandArgs* new_command_args(enum Command command) {
     args->source = NULL;
     args->specificData = NULL;
 
-    if (command == DESERIALIZE_SEARCH_RRN_AND_PRINT) {
-        SearchByRRNArgs* rrnArgs = malloc(sizeof (struct SearchByRRNArgs));
-        rrnArgs->rrn = -1;
-        args->specificData = rrnArgs;
-    }
-
     return args;
 }
 
+/**
+ * Destroy command args struct
+ * @param args target struct
+ */
 void destroy_command_args(CommandArgs* args) {
     if (args == NULL) return;
 
@@ -48,6 +53,7 @@ void destroy_command_args(CommandArgs* args) {
                 FilterArgs* next = cur->next;
                 free(cur->key);
                 free(cur->value);
+                free(cur->parsed_value);
                 free(cur);
                 cur = next;
             }
@@ -57,6 +63,10 @@ void destroy_command_args(CommandArgs* args) {
     free(args);
 }
 
+/**
+ * Read and execute the command in the given file
+ * @param data_in data input
+ */
 void execute(FILE* data_in) {
     CommandArgs* args = read_command(data_in);
 
@@ -71,13 +81,18 @@ void execute(FILE* data_in) {
             c_deserialize_filter_and_print(args);
             break;
         case DESERIALIZE_SEARCH_RRN_AND_PRINT:
-            c_deserialize_search_rrn_and_print(args);
+            c_deserialize_direct_access_rrn_and_print(args);
             break;
     }
 
     destroy_command_args(args);
 }
 
+/**
+ * Read command information from the given file
+ * @param source command source
+ * @return command information
+ */
 CommandArgs* read_command(FILE* source) {
     // Retrieve command
     uint32_t command;
@@ -111,6 +126,7 @@ CommandArgs* read_command(FILE* source) {
     // Handle command-specific params
     uint32_t n_filters;
     SearchByRRNArgs* rrn_args;
+
     switch (args->command) {
         case PARSE_AND_SERIALIZE:
             // Read output file
@@ -119,15 +135,19 @@ CommandArgs* read_command(FILE* source) {
             args->destFile = calloc(dest_path_len + 1, sizeof(char));
             memcpy(args->destFile, buffer, dest_path_len);
             break;
+
         case DESERIALIZE_AND_PRINT:
             break;
+
         case DESERIALIZE_FILTER_AND_PRINT:
             scanf("%u", &n_filters);
 
+            // Build filter list
             FilterArgs* tail = NULL;
             for (uint32_t i = 0; i  < n_filters; i++) {
                 FilterArgs* new_filter = malloc(sizeof (struct FilterArgs));
                 new_filter->next = NULL;
+                new_filter->parsed_value = NULL;
 
                 // Read field name
                 fscanf(source, "%511s", buffer);
@@ -151,7 +171,9 @@ CommandArgs* read_command(FILE* source) {
                 tail = new_filter;
             }
             break;
+
         case DESERIALIZE_SEARCH_RRN_AND_PRINT:
+            // Read RRN value
             rrn_args = malloc(sizeof(struct SearchByRRNArgs));
             fscanf(source, "%lu", &rrn_args->rrn);
             args->specificData = rrn_args;
@@ -167,7 +189,10 @@ void c_parse_and_serialize(CommandArgs* args) {
 
     // Open CSV file
     FILE* csv_file = fopen(args->sourceFile, "r");
-    assert(csv_file != NULL);
+    if (csv_file == NULL) {
+        puts(FILE_ERROR_MSG);
+        return ;
+    }
 
     // Load CSV Content
     CSVContent* csv_content = read_csv(csv_file, true);
@@ -175,6 +200,11 @@ void c_parse_and_serialize(CommandArgs* args) {
 
     // Write contents into the file
     FILE* dest_file = fopen(args->destFile, "wb");
+    if (dest_file == NULL) {
+        puts(FILE_ERROR_MSG);
+        return ;
+    }
+
     if (args->fileType == TYPE1) {
         // Write default header with a bad status
         T1Header header = DEFAULT_T1_HEADER; // Copy default T1Header
@@ -338,14 +368,23 @@ void t2_print_registry(T2Header* header, T2Registry* registry) {
     putchar('\n');
 }
 
+/**
+ * Deserialize a registry and prints its contents
+ * @param args command args
+ */
 void c_deserialize_and_print(CommandArgs* args) {
     assert(args->sourceFile != NULL);
 
     FILE* file = fopen(args->sourceFile, "rb");
+
+    if (file == NULL) {
+        puts(FILE_ERROR_MSG);
+        return ;
+    }
+
     if (args->fileType == TYPE1) {
         T1Header* header = t1_new_header();
         size_t read_bytes = t1_read_header(header, file);
-
         bool printed = false;
 
         if (read_bytes == 0 || header->status == STATUS_BAD) {
@@ -373,7 +412,6 @@ void c_deserialize_and_print(CommandArgs* args) {
     } else {
         T2Header* header = t2_new_header();
         size_t read_bytes = t2_read_header(header, file);
-
         bool printed = false;
 
         if (read_bytes == 0 || header->status == STATUS_BAD) {
@@ -403,5 +441,312 @@ void c_deserialize_and_print(CommandArgs* args) {
     fclose(file);
 }
 
-void c_deserialize_filter_and_print(CommandArgs* args) {}
-void c_deserialize_search_rrn_and_print(CommandArgs* args) {}
+/**
+ * Parse filter to int32
+ * @param filter target filter
+ * @return corresponding int32 value
+ */
+int32_t parse_int32_filter(FilterArgs* filter) {
+    int32_t value = -1;
+
+    // Filter parsing
+    if (filter->parsed_value != NULL)  {
+        value = *((int32_t*) filter->parsed_value);
+    } else {
+        if (filter->value != NULL) {
+            value = (int32_t) strtol(filter->value, NULL, 10);
+        }
+        filter->parsed_value = malloc(sizeof (value));
+        *((int32_t*) filter->parsed_value) = value;
+    }
+
+    return  value;
+}
+
+/**
+ * Checks if a registry matches the given filter list
+ * @param registry target registry
+ * @param filters target filters
+ * @return if registry matches the filters or not
+ */
+bool t1_registry_filter_match(T1Registry* registry, FilterArgs* filters) {
+    if (registry->removido == REMOVED) {
+        return false;
+    }
+
+    if (filters == NULL) {
+        return true;
+    }
+
+    FilterArgs* cur_filter = filters;
+
+    while (cur_filter != NULL) {
+        if (strcmp(ID_FIELD_NAME, cur_filter->key) == 0) { // id
+            int32_t id_filter = parse_int32_filter(cur_filter);
+            if (id_filter != registry->id) {
+                return false;
+            }
+        } else if (strcmp(ANO_FIELD_NAME, cur_filter->key) == 0) { // ano
+            int32_t ano_filter = parse_int32_filter(cur_filter);
+            if (ano_filter != registry->ano) {
+                return false;
+            }
+        } else if (strcmp(QTT_FIELD_NAME, cur_filter->key) == 0) { // qtt
+            int32_t qtt_filter = parse_int32_filter(cur_filter);
+            if (qtt_filter != registry->qtt) {
+                return false;
+            }
+        } else if (strcmp(SIGLA_FIELD_NAME, cur_filter->key) == 0) { // sigla
+            // In case filter is NULL, check sigla for null value
+            if (cur_filter->value == NULL) {
+                if (registry->sigla[0] != '$') {
+                    return false;
+                }
+            } else {
+                // check if filter is smaller than or equal to the sigla
+                size_t len = strlen(cur_filter->value);
+                if (len > REGISTRY_SIGLA_SIZE) {
+                    return false;
+                }
+
+                // compare char-by-char sigla and filter (if filter is smaller, ensure remaining bytes are NULL)
+                for (size_t i = 0; i < REGISTRY_SIGLA_SIZE; i++) {
+                    if (i >= len && registry->sigla[i] != FILLER_BYTE[0]) {
+                        return false;
+                    } else if (cur_filter->value[i] != registry->sigla[i]) {
+                        return false;
+                    }
+                }
+            }
+        } else if (strcmp(CIDADE_FIELD_NAME, cur_filter->key) == 0) { // cidade
+            // Compare non-matching nulls
+            if (cur_filter->value == NULL && registry->cidade != NULL || registry->cidade == NULL && cur_filter->value != NULL) {
+                return false;
+            } else if (strcmp(cur_filter->value, registry->cidade) != 0) {
+                return false;
+            }
+        } else if (strcmp(MARCA_FIELD_NAME, cur_filter->key) == 0) { // marca
+            // Compare non-matching nulls
+            if (cur_filter->value == NULL && registry->marca != NULL || registry->marca == NULL && cur_filter->value != NULL) {
+                return false;
+             } else if (strcmp(cur_filter->value, registry->marca) != 0) {
+                 return false;
+            }
+        } else if (strcmp(MODELO_FIELD_NAME, cur_filter->key) == 0) { // modelo
+            // Compare non-matching nulls
+            if (cur_filter->value == NULL && registry->modelo != NULL || registry->modelo == NULL && cur_filter->value != NULL) {
+                return false;
+            } else if (strcmp(cur_filter->value, registry->modelo) != 0) {
+                return false;
+            }
+        }
+
+        cur_filter = cur_filter->next;
+    }
+
+    return true;
+}
+
+
+/**
+ * Checks if a registry matches the given filter list
+ * @param registry target registry
+ * @param filters target filters
+ * @return if registry matches the filters or not
+ */
+bool t2_registry_filter_match(T2Registry* registry, FilterArgs* filters) {
+    if (registry->removido == REMOVED) {
+        return false;
+    }
+
+    if (filters == NULL) {
+        return true;
+    }
+
+    FilterArgs* cur_filter = filters;
+
+    while (cur_filter != NULL) {
+        if (strcmp(ID_FIELD_NAME, cur_filter->key) == 0) { // id
+            int32_t id_filter = parse_int32_filter(cur_filter);
+            if (id_filter != registry->id) {
+                return false;
+            }
+        } else if (strcmp(ANO_FIELD_NAME, cur_filter->key) == 0) { // ano
+            int32_t ano_filter = parse_int32_filter(cur_filter);
+            if (ano_filter != registry->ano) {
+                return false;
+            }
+        } else if (strcmp(QTT_FIELD_NAME, cur_filter->key) == 0) { // qtt
+            int32_t qtt_filter = parse_int32_filter(cur_filter);
+            if (qtt_filter != registry->qtt) {
+                return false;
+            }
+        } else if (strcmp(SIGLA_FIELD_NAME, cur_filter->key) == 0) { // sigla
+            // In case filter is NULL, check sigla for null value
+            if (cur_filter->value == NULL) {
+                if (registry->sigla[0] != '$') {
+                    return false;
+                }
+            } else {
+                // check if filter is smaller than or equal to the sigla
+                size_t len = strlen(cur_filter->value);
+                if (len > REGISTRY_SIGLA_SIZE) {
+                    return false;
+                }
+
+                // compare char-by-char sigla and filter (if filter is smaller, ensure remaining bytes are NULL)
+                for (size_t i = 0; i < REGISTRY_SIGLA_SIZE; i++) {
+                    if (i >= len && registry->sigla[i] != FILLER_BYTE[0]) {
+                        return false;
+                    } else if (cur_filter->value[i] != registry->sigla[i]) {
+                        return false;
+                    }
+                }
+            }
+        } else if (strcmp(CIDADE_FIELD_NAME, cur_filter->key) == 0) { // cidade
+            // Compare non-matching nulls
+            if (cur_filter->value == NULL && registry->cidade != NULL || registry->cidade == NULL && cur_filter->value != NULL) {
+                return false;
+            } else if (strcmp(cur_filter->value, registry->cidade) != 0) {
+                return false;
+            }
+        } else if (strcmp(MARCA_FIELD_NAME, cur_filter->key) == 0) { // marca
+            // Compare non-matching nulls
+            if (cur_filter->value == NULL && registry->marca != NULL || registry->marca == NULL && cur_filter->value != NULL) {
+                return false;
+            } else if (strcmp(cur_filter->value, registry->marca) != 0) {
+                return false;
+            }
+        } else if (strcmp(MODELO_FIELD_NAME, cur_filter->key) == 0) { // modelo
+            // Compare non-matching nulls
+            if (cur_filter->value == NULL && registry->modelo != NULL || registry->modelo == NULL && cur_filter->value != NULL) {
+                return false;
+            } else if (strcmp(cur_filter->value, registry->modelo) != 0) {
+                return false;
+            }
+        }
+
+        cur_filter = cur_filter->next;
+    }
+
+    return true;
+}
+
+/**
+ * Deserialize a registry and print everyone matching the given filter
+ * @param args command args
+ */
+void c_deserialize_filter_and_print(CommandArgs* args) {
+    assert(args->sourceFile != NULL);
+    FilterArgs* filters = args->specificData;
+
+    FILE* file = fopen(args->sourceFile, "rb");
+    if (file == NULL) {
+        puts(FILE_ERROR_MSG);
+        return ;
+    }
+
+    if (args->fileType == TYPE1) {
+        T1Header* header = t1_new_header();
+        size_t read_bytes = t1_read_header(header, file);
+        bool printed = false;
+
+        if (read_bytes == 0 || header->status == STATUS_BAD) {
+            puts(FILE_ERROR_MSG);
+        } else {
+            T1Registry* registry = t1_new_registry();
+            for (uint32_t i = 0; i < header->proxRRN; i++) {
+                read_bytes += t1_read_registry(registry, file);
+
+                if (registry == NULL || !t1_registry_filter_match(registry, filters)) {
+                    continue;
+                }
+
+                t1_print_registry(header, registry);
+                printed = true;
+            }
+            t1_destroy_registry(registry);
+
+            if (!printed) {
+                puts(EMPTY_REGISTRY_MSG);
+            }
+        }
+
+        t1_destroy_header(header);
+    } else {
+        T2Header* header = t2_new_header();
+        size_t read_bytes = t2_read_header(header, file);
+        bool printed = false;
+
+        if (read_bytes == 0 || header->status == STATUS_BAD) {
+            puts(FILE_ERROR_MSG);
+        } else {
+
+            T2Registry* registry = t2_new_registry();
+            while (read_bytes < header->proxByteOffset) {
+                read_bytes += t2_read_registry(registry, file);
+
+                if (registry == NULL || !t2_registry_filter_match(registry, filters)) {
+                    continue;
+                }
+
+                t2_print_registry(header, registry);
+                printed = true;
+            }
+            t2_destroy_registry(registry);
+
+            if (!printed) {
+                puts(EMPTY_REGISTRY_MSG);
+            }
+        }
+
+        t2_destroy_header(header);
+    }
+    fclose(file);
+}
+
+/**
+ * Try access a registry by its RRN and print it
+ * @param args command args
+ */
+void c_deserialize_direct_access_rrn_and_print(CommandArgs* args) {
+    assert(args->sourceFile != NULL);
+    SearchByRRNArgs* rrn_args = args->specificData;
+
+    FILE* file = fopen(args->sourceFile, "rb");
+
+    if (file == NULL) {
+        puts(FILE_ERROR_MSG);
+        return ;
+    }
+
+    if (args->fileType == TYPE1) {
+        T1Header* header = t1_new_header();
+        size_t read_bytes = t1_read_header(header, file);
+
+        if (read_bytes == 0 || header->status == STATUS_BAD) {
+            puts(FILE_ERROR_MSG);
+        } else if (rrn_args->rrn >= header->proxRRN) {
+            puts(EMPTY_REGISTRY_MSG);
+        } else {
+            int64_t jump_size = T1_TOTAL_REGISTRY_SIZE * rrn_args->rrn;
+            fseek(file, jump_size, SEEK_CUR);
+
+            T1Registry* registry = t1_new_registry();
+            t1_read_registry(registry, file);
+
+            if (registry != NULL && registry->removido == NOT_REMOVED) {
+                t1_print_registry(header, registry);
+            } else {
+                puts(EMPTY_REGISTRY_MSG);
+            }
+
+            t1_destroy_registry(registry);
+        }
+
+        t1_destroy_header(header);
+    } else {
+        puts(FILE_ERROR_MSG);
+    }
+    fclose(file);
+}

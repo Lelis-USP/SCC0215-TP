@@ -39,5 +39,5 @@ static const T2Header DEFAULT_T2_HEADER = {
         0
 };
 
-static const char EMPTY_REGISTRY_MSG[] = "";
-static const char FILE_ERROR_MSG[] = "";
+static const char EMPTY_REGISTRY_MSG[] = "Registro inexistente.";
+static const char FILE_ERROR_MSG[] = "Falha no processamento do arquivo.";

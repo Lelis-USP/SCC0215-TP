@@ -179,6 +179,9 @@ size_t t2_read_registry(T2Registry* registry, FILE* src) {
         return 0;
     }
 
+    free(registry->cidade);
+    free(registry->marca);
+    free(registry->modelo);
     t2_setup_registry(registry); // Place default data into registry
 
     // Read struct's fields in order
@@ -211,17 +214,14 @@ size_t t2_read_registry(T2Registry* registry, FILE* src) {
         if (strncmp(var_len_field.code, "0", CODE_FIELD_LEN) == 0) {
             registry->tamCidade = var_len_field.size;
             memcpy(registry->codC5, var_len_field.code, CODE_FIELD_LEN * sizeof (char));
-            free(registry->cidade);
             registry->cidade = var_len_field.data;
         } else if (strncmp(var_len_field.code, "1", CODE_FIELD_LEN) == 0) {
             registry->tamMarca = var_len_field.size;
             memcpy(registry->codC6, var_len_field.code, CODE_FIELD_LEN * sizeof (char));
-            free(registry->marca);
             registry->marca = var_len_field.data;
         } else if (strncmp(var_len_field.code, "2", CODE_FIELD_LEN) == 0) {
             registry->tamModelo = var_len_field.size;
             memcpy(registry->codC7, var_len_field.code, CODE_FIELD_LEN * sizeof (char));
-            free(registry->modelo);
             registry->modelo = var_len_field.data;
         } else {
             assert(0 && "Invalid column code");
@@ -255,6 +255,9 @@ void t2_setup_header(T2Header* header) {
  */
 void t2_setup_registry(T2Registry* registry) {
     registry->removido = NOT_REMOVED;
+    for (uint8_t i = 0; i < REGISTRY_SIGLA_SIZE; i++) {
+        registry->sigla[i] = FILLER_BYTE[0];
+    }
     registry->prox = -1;
     registry->tamCidade = 0;
     registry->cidade = NULL;
