@@ -30,8 +30,6 @@ size_t fill_bytes(size_t n, FILE* file) {
  * @return number of bytes written
  */
 size_t fwrite_var_len_str(char* str, strlen_t len, char* code, FILE* file) {
-    assert(file != NULL);
-
     size_t written_bytes = 0;
 
     if (len == 0 || str == NULL) {
@@ -57,8 +55,6 @@ size_t fwrite_var_len_str(char* str, strlen_t len, char* code, FILE* file) {
  * @return the variable length spring data
  */
 VarLenStrField fread_var_len_str(FILE* file) {
-    assert(file != NULL);
-
     size_t read_bytes = 0;
     VarLenStrField str_field = {0, {0}, NULL, 0};
 

@@ -10,4 +10,5 @@ to-do
 
 - [ ] Better reuse code between T1Regisry and T2Registry
   - Maybe apply some kind of generic implementation over void\* and a registry type indicator.
-- [ ] Global error management
+- [x] Global error management
+- [ ] Auto resizing buffers

@@ -4,13 +4,13 @@
 
 #include "command_processor.h"
 
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "commands.h"
 #include "common.h"
 #include "../utils/provided_functions.h"
+#include "../exception/exception.h"
 
 
 /**
@@ -49,8 +49,8 @@ CommandArgs* read_command(FILE* source) {
     fscanf(source, "%u", &command);
 
     // Validate command
-    assert(command >= 1);
-    assert(command <= 4);
+    ex_assert(command >= MIN_COMMAND, EX_COMMAND_PARSE_ERROR);
+    ex_assert(command <= MAX_COMMAND, EX_COMMAND_PARSE_ERROR);
 
     // Create base args
     CommandArgs* args = new_command_args(command);
@@ -64,7 +64,7 @@ CommandArgs* read_command(FILE* source) {
     if (strncasecmp("tipo1", buffer, 6) == 0) {
         args->fileType = TYPE1;
     } else {
-        assert(strncasecmp("tipo2", buffer, 6) == 0);// If not "tipo1", assert that the input was "tipo2"
+        ex_assert(strncasecmp("tipo2", buffer, 6) == 0, EX_COMMAND_PARSE_ERROR);// If not "tipo1", assert that the input was "tipo2"
     }
 
     // Read input file path

@@ -41,6 +41,4 @@ static const T2Header DEFAULT_T2_HEADER = {
         T2_HEADER_SIZE,
         0};
 
-static const char EMPTY_REGISTRY_MSG[] = "Registro inexistente.";
-static const char FILE_ERROR_MSG[] = "Falha no processamento do arquivo.";
 static const char NULL_FIELD_REPR[] = "NAO PREENCHIDO";

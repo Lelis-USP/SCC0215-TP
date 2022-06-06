@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../exception/exception.h"
+
 /**
  * Allocate and preset a new CSVHeader
  * @return
@@ -215,7 +217,7 @@ CSVContent* read_csv(FILE* csv_file, bool has_header) {
         }
 
         // Prevent buffer overflow
-        assert(buffer_idx < 512);
+        ex_assert(buffer_idx < 512, EX_GENERIC_ERROR);
 
         // Write char to buffer
         buffer[buffer_idx] = (char) cur_char;

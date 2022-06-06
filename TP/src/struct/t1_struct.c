@@ -4,9 +4,10 @@
 
 #include "t1_struct.h"
 
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "../exception/exception.h"
 
 /**
  * Write a header struct to a file (at the current position, no seeking)
@@ -23,8 +24,8 @@ size_t t1_write_header(T1Header* header, FILE* dest) {
      */
 
     // Basic validation
-    assert(header != NULL);
-    assert(dest != NULL);
+    ex_assert(header != NULL, EX_GENERIC_ERROR);
+    ex_assert(dest != NULL, EX_FILE_ERROR);
 
     // Writing
     size_t written_bytes = 0;
@@ -106,8 +107,8 @@ size_t t1_read_header(T1Header* header, FILE* src) {
  */
 size_t t1_write_registry(T1Registry* registry, FILE* dest) {
     // Basic validation
-    assert(registry != NULL);
-    assert(dest != NULL);
+    ex_assert(registry != NULL, EX_GENERIC_ERROR);
+    ex_assert(dest != NULL, EX_FILE_ERROR);
 
     // Total fields written
     size_t written_bytes = 0;
@@ -193,7 +194,7 @@ size_t t1_read_registry(T1Registry* registry, FILE* src) {
             memcpy(registry->codC7, var_len_field.code, CODE_FIELD_LEN * sizeof(char));
             registry->modelo = var_len_field.data;
         } else {
-            assert(0 && "Invalid column code");
+            ex_raise(EX_FILE_ERROR);
         }
     }
 
@@ -243,7 +244,7 @@ void t1_setup_registry(T1Registry* registry) {
  */
 T1Header* t1_new_header() {
     T1Header* header = malloc(sizeof(struct T1Header));
-    assert(header != NULL);
+    ex_assert(header != NULL, EX_GENERIC_ERROR);
     t1_setup_header(header);
     return header;
 }
@@ -254,7 +255,7 @@ T1Header* t1_new_header() {
  */
 T1Registry* t1_new_registry() {
     T1Registry* registry = malloc(sizeof(struct T1Registry));
-    assert(registry != NULL);
+    ex_assert(registry != NULL, EX_GENERIC_ERROR);
     t1_setup_registry(registry);
     return registry;
 }

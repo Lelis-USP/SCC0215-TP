@@ -7,6 +7,9 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#define MIN_COMMAND 1
+#define MAX_COMMAND 4
+
 enum Command {
     PARSE_AND_SERIALIZE = 1,
     DESERIALIZE_AND_PRINT = 2,

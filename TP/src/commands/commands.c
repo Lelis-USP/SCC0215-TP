@@ -13,6 +13,7 @@
 #include "../utils/csv_parser.h"
 #include "../utils/provided_functions.h"
 #include "../utils/registry_builder.h"
+#include "../exception/exception.h"
 
 
 // Commands //
@@ -22,15 +23,12 @@
  * @param args command args
  */
 void c_parse_and_serialize(CommandArgs* args) {
-    assert(args->sourceFile != NULL);
-    assert(args->destFile != NULL);
+    ex_assert(args->sourceFile != NULL, EX_COMMAND_PARSE_ERROR);
+    ex_assert(args->destFile != NULL, EX_COMMAND_PARSE_ERROR);
 
     // Open CSV file
     FILE* csv_file = fopen(args->sourceFile, "r");
-    if (csv_file == NULL) {
-        puts(FILE_ERROR_MSG);
-        return;
-    }
+    ex_assert(csv_file != NULL, EX_FILE_ERROR);
 
     // Load CSV Content
     CSVContent* csv_content = read_csv(csv_file, true);
@@ -38,10 +36,7 @@ void c_parse_and_serialize(CommandArgs* args) {
 
     // Write contents into the file
     FILE* dest_file = fopen(args->destFile, "wb");
-    if (dest_file == NULL) {
-        puts(FILE_ERROR_MSG);
-        return;
-    }
+    ex_assert(dest_file != NULL, EX_FILE_ERROR);
 
     if (args->fileType == TYPE1) {
         // Write default header with a bad status
@@ -96,14 +91,10 @@ void c_parse_and_serialize(CommandArgs* args) {
  * @param args command args
  */
 void c_deserialize_and_print(CommandArgs* args) {
-    assert(args->sourceFile != NULL);
+    ex_assert(args->sourceFile != NULL, EX_COMMAND_PARSE_ERROR);
 
     FILE* file = fopen(args->sourceFile, "rb");
-
-    if (file == NULL) {
-        puts(FILE_ERROR_MSG);
-        return;
-    }
+    ex_assert(file != NULL, EX_FILE_ERROR);
 
     if (args->fileType == TYPE1) {
         T1Header* header = t1_new_header();
@@ -111,7 +102,8 @@ void c_deserialize_and_print(CommandArgs* args) {
         bool printed = false;
 
         if (read_bytes == 0 || header->status == STATUS_BAD) {
-            puts(FILE_ERROR_MSG);
+            fclose(file);
+            ex_raise(EX_FILE_ERROR);
         } else {
             T1Registry* registry = t1_new_registry();
             for (uint32_t i = 0; i < header->proxRRN; i++) {
@@ -127,7 +119,8 @@ void c_deserialize_and_print(CommandArgs* args) {
             t1_destroy_registry(registry);
 
             if (!printed) {
-                puts(EMPTY_REGISTRY_MSG);
+                fclose(file);
+                ex_raise(EX_REGISTRY_NOT_FOUND);
             }
         }
 
@@ -138,7 +131,8 @@ void c_deserialize_and_print(CommandArgs* args) {
         bool printed = false;
 
         if (read_bytes == 0 || header->status == STATUS_BAD) {
-            puts(FILE_ERROR_MSG);
+            fclose(file);
+            ex_raise(EX_FILE_ERROR);
         } else {
 
             T2Registry* registry = t2_new_registry();
@@ -155,7 +149,8 @@ void c_deserialize_and_print(CommandArgs* args) {
             t2_destroy_registry(registry);
 
             if (!printed) {
-                puts(EMPTY_REGISTRY_MSG);
+                fclose(file);
+                ex_raise(EX_REGISTRY_NOT_FOUND);
             }
         }
 
@@ -169,14 +164,11 @@ void c_deserialize_and_print(CommandArgs* args) {
  * @param args command args
  */
 void c_deserialize_filter_and_print(CommandArgs* args) {
-    assert(args->sourceFile != NULL);
+    ex_assert(args->sourceFile != NULL, EX_COMMAND_PARSE_ERROR);
     FilterArgs* filters = args->specificData;
 
     FILE* file = fopen(args->sourceFile, "rb");
-    if (file == NULL) {
-        puts(FILE_ERROR_MSG);
-        return;
-    }
+    ex_assert(file != NULL, EX_FILE_ERROR);
 
     if (args->fileType == TYPE1) {
         T1Header* header = t1_new_header();
@@ -184,7 +176,8 @@ void c_deserialize_filter_and_print(CommandArgs* args) {
         bool printed = false;
 
         if (read_bytes == 0 || header->status == STATUS_BAD) {
-            puts(FILE_ERROR_MSG);
+            fclose(file);
+            ex_raise(EX_FILE_ERROR);
         } else {
             T1Registry* registry = t1_new_registry();
             for (uint32_t i = 0; i < header->proxRRN; i++) {
@@ -200,7 +193,8 @@ void c_deserialize_filter_and_print(CommandArgs* args) {
             t1_destroy_registry(registry);
 
             if (!printed) {
-                puts(EMPTY_REGISTRY_MSG);
+                fclose(file);
+                ex_raise(EX_REGISTRY_NOT_FOUND);
             }
         }
 
@@ -211,7 +205,8 @@ void c_deserialize_filter_and_print(CommandArgs* args) {
         bool printed = false;
 
         if (read_bytes == 0 || header->status == STATUS_BAD) {
-            puts(FILE_ERROR_MSG);
+            fclose(file);
+            ex_raise(EX_FILE_ERROR);
         } else {
 
             T2Registry* registry = t2_new_registry();
@@ -228,7 +223,8 @@ void c_deserialize_filter_and_print(CommandArgs* args) {
             t2_destroy_registry(registry);
 
             if (!printed) {
-                puts(EMPTY_REGISTRY_MSG);
+                fclose(file);
+                ex_raise(EX_REGISTRY_NOT_FOUND);
             }
         }
 
@@ -242,24 +238,22 @@ void c_deserialize_filter_and_print(CommandArgs* args) {
  * @param args command args
  */
 void c_deserialize_direct_access_rrn_and_print(CommandArgs* args) {
-    assert(args->sourceFile != NULL);
+    ex_assert(args->sourceFile != NULL, EX_COMMAND_PARSE_ERROR);
     SearchByRRNArgs* rrn_args = args->specificData;
 
     FILE* file = fopen(args->sourceFile, "rb");
-
-    if (file == NULL) {
-        puts(FILE_ERROR_MSG);
-        return;
-    }
+    ex_assert(file != NULL, EX_FILE_ERROR);
 
     if (args->fileType == TYPE1) {
         T1Header* header = t1_new_header();
         size_t read_bytes = t1_read_header(header, file);
 
         if (read_bytes == 0 || header->status == STATUS_BAD) {
-            puts(FILE_ERROR_MSG);
+            fclose(file);
+            ex_raise(EX_FILE_ERROR);
         } else if (rrn_args->rrn >= header->proxRRN) {
-            puts(EMPTY_REGISTRY_MSG);
+            fclose(file);
+            ex_raise(EX_REGISTRY_NOT_FOUND);
         } else {
             int64_t jump_size = T1_TOTAL_REGISTRY_SIZE * rrn_args->rrn;
             fseek(file, jump_size, SEEK_CUR);
@@ -270,7 +264,8 @@ void c_deserialize_direct_access_rrn_and_print(CommandArgs* args) {
             if (registry != NULL && registry->removido == NOT_REMOVED) {
                 t1_print_registry(header, registry);
             } else {
-                puts(EMPTY_REGISTRY_MSG);
+                fclose(file);
+                ex_raise(EX_REGISTRY_NOT_FOUND);
             }
 
             t1_destroy_registry(registry);
@@ -278,7 +273,8 @@ void c_deserialize_direct_access_rrn_and_print(CommandArgs* args) {
 
         t1_destroy_header(header);
     } else {
-        puts(FILE_ERROR_MSG);
+        fclose(file);
+        ex_raise(EX_FILE_ERROR);
     }
     fclose(file);
 }

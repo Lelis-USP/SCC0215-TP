@@ -4,9 +4,10 @@
 
 #include "t2_struct.h"
 
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "../exception/exception.h"
 
 /**
  * Write a header struct to a file (at the current position, no seeking)
@@ -23,8 +24,8 @@ size_t t2_write_header(T2Header* header, FILE* dest) {
      */
 
     // Basic validation
-    assert(header != NULL);
-    assert(dest != NULL);
+    ex_assert(header != NULL, EX_GENERIC_ERROR);
+    ex_assert(dest != NULL, EX_FILE_ERROR);
 
     // Writing
     size_t written_bytes = 0;
@@ -142,8 +143,8 @@ size_t t2_registry_size(T2Registry* registry) {
  */
 size_t t2_write_registry(T2Registry* registry, FILE* dest) {
     // Basic validation
-    assert(registry != NULL);
-    assert(dest != NULL);
+    ex_assert(registry != NULL, EX_GENERIC_ERROR);
+    ex_assert(dest != NULL, EX_FILE_ERROR);
 
     // Total fields written
     size_t written_bytes = 0;
@@ -166,7 +167,7 @@ size_t t2_write_registry(T2Registry* registry, FILE* dest) {
     written_bytes += fwrite_member_var_len_str(registry, modelo, tamModelo, codC7, dest);
 
     // Sanity check that the amount of bytes written is the expected size
-    assert(written_bytes == registry->tamanhoRegistro + t2_ignored_size);
+    ex_assert(written_bytes == registry->tamanhoRegistro + t2_ignored_size, EX_GENERIC_ERROR);
 
     return written_bytes;
 }
@@ -228,12 +229,12 @@ size_t t2_read_registry(T2Registry* registry, FILE* src) {
             memcpy(registry->codC7, var_len_field.code, CODE_FIELD_LEN * sizeof(char));
             registry->modelo = var_len_field.data;
         } else {
-            assert(0 && "Invalid column code");
+            ex_raise(EX_GENERIC_ERROR);
         }
     }
 
     // Ensure the amount of bytes read follows the expected size
-    assert(read_bytes == registry->tamanhoRegistro + t2_ignored_size);
+    ex_assert(read_bytes == registry->tamanhoRegistro + t2_ignored_size, EX_GENERIC_ERROR);
 
     return read_bytes;
 }
@@ -278,7 +279,7 @@ void t2_setup_registry(T2Registry* registry) {
  */
 T2Header* t2_new_header() {
     T2Header* header = malloc(sizeof(struct T2Header));
-    assert(header != NULL);
+    ex_assert(header != NULL, EX_GENERIC_ERROR);
     t2_setup_header(header);
     return header;
 }
@@ -289,7 +290,7 @@ T2Header* t2_new_header() {
  */
 T2Registry* t2_new_registry() {
     T2Registry* registry = malloc(sizeof(struct T2Registry));
-    assert(registry != NULL);
+    ex_assert(registry != NULL, EX_GENERIC_ERROR);
     t2_setup_registry(registry);
     return registry;
 }
