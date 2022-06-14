@@ -1,11 +1,11 @@
-#include "base_registry.h"
+#include "registry_content.h"
 
 #include <stdlib.h>
 #include <string.h>
 
 #include "../exception/exception.h"
 
-size_t write_header_content(BaseHeaderContent* header_content, FILE* dest) {
+size_t write_header_content(HeaderContent* header_content, FILE* dest) {
     ex_assert(header_content != NULL, EX_GENERIC_ERROR);
     ex_assert(dest != NULL, EX_FILE_ERROR);
 
@@ -26,7 +26,7 @@ size_t write_header_content(BaseHeaderContent* header_content, FILE* dest) {
     return written_bytes;
 }
 
-size_t read_header_content(BaseHeaderContent* header_content, FILE* src) {
+size_t read_header_content(HeaderContent* header_content, FILE* src) {
     ex_assert(header_content != NULL, EX_GENERIC_ERROR);
     setup_header_content(header_content);
 
@@ -47,7 +47,7 @@ size_t read_header_content(BaseHeaderContent* header_content, FILE* src) {
     return read_bytes;
 }
 
-size_t write_registry_content(BaseRegistryContent* registry_content, FILE* dest) {
+size_t write_registry_content(RegistryContent* registry_content, FILE* dest) {
     ex_assert(registry_content != NULL, EX_GENERIC_ERROR);
     ex_assert(dest != NULL, EX_FILE_ERROR);
 
@@ -66,7 +66,7 @@ size_t write_registry_content(BaseRegistryContent* registry_content, FILE* dest)
     return written_bytes;
 }
 
-size_t read_registry_content(BaseRegistryContent* registry_content, FILE* src) {
+size_t read_registry_content(RegistryContent* registry_content, FILE* src) {
     ex_assert(registry_content != NULL, EX_GENERIC_ERROR);
     ex_assert(src != NULL, EX_FILE_ERROR);
 
@@ -113,11 +113,11 @@ size_t read_registry_content(BaseRegistryContent* registry_content, FILE* src) {
     return read_bytes;
 }
 
-void setup_header_content(BaseHeaderContent* header_content) {
+void setup_header_content(HeaderContent* header_content) {
     // Nothing to set up
 }
 
-void setup_registry_content(BaseRegistryContent* registry_content) {
+void setup_registry_content(RegistryContent* registry_content) {
     for (uint8_t i = 0; i < REGISTRY_SIGLA_SIZE; i++) {
         registry_content->sigla[i] = FILLER_BYTE[0];
     }
@@ -129,28 +129,28 @@ void setup_registry_content(BaseRegistryContent* registry_content) {
     registry_content->modelo = NULL;
 }
 
-BaseHeaderContent* new_header_content() {
-    BaseHeaderContent* header_content = malloc(sizeof(struct BaseHeaderContent));
+HeaderContent* new_header_content() {
+    HeaderContent* header_content = malloc(sizeof(struct HeaderContent));
     ex_assert(header_content != NULL, EX_MEMORY_ERROR);
     setup_header_content(header_content);
     return header_content;
 }
 
-BaseRegistryContent* new_registry_content() {
-    BaseRegistryContent* registry_content = malloc(sizeof(struct BaseRegistryContent));
+RegistryContent* new_registry_content() {
+    RegistryContent* registry_content = malloc(sizeof(struct RegistryContent));
     ex_assert(registry_content != NULL, EX_MEMORY_ERROR);
     setup_registry_content(registry_content);
     return registry_content;
 }
 
-void destroy_header_content(BaseHeaderContent* header_content) {
+void destroy_header_content(HeaderContent* header_content) {
     if (header_content == NULL) {
         return;
     }
 
     free(header_content);
 }
-void destroy_registry_content(BaseRegistryContent* registry_content) {
+void destroy_registry_content(RegistryContent* registry_content) {
     if (registry_content == NULL) {
         return;
     }

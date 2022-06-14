@@ -17,7 +17,7 @@
 #define HEADER_COD_C7_SIZE 1
 #define HEADER_DES_C7_SIZE 19
 
-typedef struct BaseRegistryContent {
+typedef struct RegistryContent {
     int32_t id;
     int32_t ano;
     int32_t qtt;
@@ -31,9 +31,9 @@ typedef struct BaseRegistryContent {
     strlen_t tamModelo;
     char codC7[CODE_FIELD_LEN];
     char* modelo;
-} BaseRegistryContent;
+} RegistryContent;
 
-typedef struct BaseHeaderContent {
+typedef struct HeaderContent {
     char descricao[HEADER_DESCRIPTION_SIZE];
     char desC1[HEADER_DES_C1_SIZE];
     char desC2[HEADER_DES_C2_SIZE];
@@ -45,19 +45,19 @@ typedef struct BaseHeaderContent {
     char desC6[HEADER_DES_C6_SIZE];
     char codC7[HEADER_COD_C7_SIZE];
     char desC7[HEADER_DES_C7_SIZE];
-} BaseHeaderContent;
+} HeaderContent;
 
-size_t write_header_content(BaseHeaderContent* header_content, FILE* dest);
-size_t read_header_content(BaseHeaderContent* header_content, FILE* src);
+size_t write_header_content(HeaderContent* header_content, FILE* dest);
+size_t read_header_content(HeaderContent* header_content, FILE* src);
 
-size_t write_registry_content(BaseRegistryContent* registry_content, FILE* dest);
-size_t read_registry_content(BaseRegistryContent* registry_content, FILE* src);
+size_t write_registry_content(RegistryContent* registry_content, FILE* dest);
+size_t read_registry_content(RegistryContent* registry_content, FILE* src);
 
-void setup_header_content(BaseHeaderContent* header_content);
-void setup_registry_content(BaseRegistryContent * registry_content);
+void setup_header_content(HeaderContent* header_content);
+void setup_registry_content(RegistryContent* registry_content);
 
-BaseHeaderContent* new_header_content();
-BaseRegistryContent* new_registry_content();
+HeaderContent* new_header_content();
+RegistryContent* new_registry_content();
 
-void destroy_header_content(BaseHeaderContent* header_content);
-void destroy_registry_content(BaseRegistryContent* registry_content);
+void destroy_header_content(HeaderContent* header_content);
+void destroy_registry_content(RegistryContent* registry_content);
