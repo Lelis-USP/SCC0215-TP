@@ -14,6 +14,7 @@ static const char EX_GENERIC_ERROR[] = "Erro desconhecido.";
 static const char EX_REGISTRY_NOT_FOUND[] = "Registro inexistente.";
 static const char EX_FILE_ERROR[] = "Falha no processamento do arquivo.";
 static const char EX_COMMAND_PARSE_ERROR[] = "Falha ao processar comando.";
+static const char EX_MEMORY_ERROR[] = "Falha ao alocar memória.";
 
 // Raising errors
 void ex_raise(const char message[]);
