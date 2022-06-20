@@ -121,10 +121,15 @@ void setup_registry_content(RegistryContent* registry_content) {
     for (uint8_t i = 0; i < REGISTRY_SIGLA_SIZE; i++) {
         registry_content->sigla[i] = FILLER_BYTE[0];
     }
+    free(registry_content->cidade);
     registry_content->tamCidade = 0;
     registry_content->cidade = NULL;
+
+    free(registry_content->marca);
     registry_content->tamMarca = 0;
     registry_content->marca = NULL;
+
+    free(registry_content->modelo);
     registry_content->tamModelo = 0;
     registry_content->modelo = NULL;
 }
@@ -139,6 +144,9 @@ HeaderContent* new_header_content() {
 RegistryContent* new_registry_content() {
     RegistryContent* registry_content = malloc(sizeof(struct RegistryContent));
     ex_assert(registry_content != NULL, EX_MEMORY_ERROR);
+    registry_content->cidade = NULL;
+    registry_content->marca = NULL;
+    registry_content->modelo = NULL;
     setup_registry_content(registry_content);
     return registry_content;
 }
