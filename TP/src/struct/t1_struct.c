@@ -17,12 +17,6 @@
  * @return amount of bytes written
  */
 size_t t1_write_header(T1Header* header, FILE* dest) {
-    /**
-     * Checklist:
-     * - Shall I use a local memory buffer to write everything in a single call? (I guess there wouldn't be benefits, if anything memory management problems)
-     * - Shall I check for write failures here? (Kinda addressed it by returning total written bytes)
-     */
-
     // Basic validation
     ex_assert(header != NULL, EX_GENERIC_ERROR);
     ex_assert(dest != NULL, EX_FILE_ERROR);

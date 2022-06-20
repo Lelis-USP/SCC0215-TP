@@ -22,6 +22,7 @@ static const size_t T2_IGNORED_SIZE = member_size(T2RegistryMetadata, removido) 
 size_t t2_write_header(Header* header, FILE* dest);
 size_t t2_read_header(Header* header, FILE* src);
 
+size_t t2_registry_size(Registry* registry);
 size_t t2_write_registry(Registry* registry, FILE* dest);
 size_t t2_read_registry(Registry* registry, FILE* src);
 

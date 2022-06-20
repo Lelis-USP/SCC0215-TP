@@ -15,6 +15,7 @@ static const char EX_REGISTRY_NOT_FOUND[] = "Registro inexistente.";
 static const char EX_FILE_ERROR[] = "Falha no processamento do arquivo.";
 static const char EX_COMMAND_PARSE_ERROR[] = "Falha ao processar comando.";
 static const char EX_MEMORY_ERROR[] = "Falha ao alocar memória.";
+static const char EX_CORRUPTED_REGISTRY[] = "Registro corrompido.";
 
 // Raising errors
 void ex_raise(const char message[]);

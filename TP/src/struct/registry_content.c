@@ -66,7 +66,7 @@ size_t write_registry_content(RegistryContent* registry_content, FILE* dest) {
     return written_bytes;
 }
 
-size_t read_registry_content(RegistryContent* registry_content, FILE* src) {
+size_t read_registry_content(RegistryContent* registry_content, FILE* src, size_t max_read_bytes) {
     ex_assert(registry_content != NULL, EX_GENERIC_ERROR);
     ex_assert(src != NULL, EX_FILE_ERROR);
 
@@ -83,7 +83,7 @@ size_t read_registry_content(RegistryContent* registry_content, FILE* src) {
     read_bytes += fread_member_field(registry_content, sigla, src);
 
     // Read variable length fields
-    for (uint8_t i = 0; i < 3; i++) {
+    for (uint8_t i = 0; i < 3 && read_bytes < max_read_bytes; i++) {
         VarLenStrField var_len_field = fread_var_len_str(src);
         read_bytes += var_len_field.read_bytes;
 

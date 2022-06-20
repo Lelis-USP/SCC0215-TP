@@ -51,7 +51,7 @@ size_t write_header_content(HeaderContent* header_content, FILE* dest);
 size_t read_header_content(HeaderContent* header_content, FILE* src);
 
 size_t write_registry_content(RegistryContent* registry_content, FILE* dest);
-size_t read_registry_content(RegistryContent* registry_content, FILE* src);
+size_t read_registry_content(RegistryContent* registry_content, FILE* src, size_t max_read_bytes);
 
 void setup_header_content(HeaderContent* header_content);
 void setup_registry_content(RegistryContent* registry_content);
