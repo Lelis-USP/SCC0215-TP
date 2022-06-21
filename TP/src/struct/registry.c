@@ -1,7 +1,9 @@
 #include "registry.h"
 
 #include <stdlib.h>
+#include <string.h>
 
+#include "../const/const.h"
 #include "../exception/exception.h"
 #include "t1_registry.h"
 #include "t2_registry.h"
@@ -154,6 +156,28 @@ Header* build_header(RegistryType registry_type) {
     return header;
 }
 
+Header* build_default_header(RegistryType registry_type) {
+    Header* header = new_header();
+    header->registry_type = registry_type;
+    setup_header(header);
+
+    switch (registry_type) {
+        case FIX_LEN:
+            memcpy(header->header_metadata, &DEFAULT_T1_HEADER_METADATA, sizeof (struct T1HeaderMetadata));
+            memcpy(header->header_content, &DEFAULT_HEADER_CONTENT, sizeof (struct HeaderContent));
+            break;
+        case VAR_LEN:
+            memcpy(header->header_metadata, &DEFAULT_T2_HEADER_METADATA, sizeof (struct T2HeaderMetadata));
+            memcpy(header->header_content, &DEFAULT_HEADER_CONTENT, sizeof (struct HeaderContent));
+            break;
+        default:
+            ex_raise(EX_GENERIC_ERROR);
+            break;
+    }
+
+    return header;
+}
+
 Registry* build_registry(Header* header) {
     Registry* registry = new_registry();
     registry->registry_type = header->registry_type;
@@ -250,4 +274,51 @@ size_t read_registry(Registry* registry, FILE* src) {
     }
 
     return read_bytes;
+}
+
+bool is_registry_removed(Registry* registry) {
+    ex_assert(registry->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
+
+    if (registry->registry_type == FIX_LEN) {
+        return ((T1RegistryMetadata*) registry->registry_metadata)->removido == REMOVED;
+    }
+
+    if (registry->registry_type == VAR_LEN) {
+        return ((T2RegistryMetadata*) registry->registry_metadata)->removido == REMOVED;
+    }
+
+    return false;
+}
+
+void set_header_status(Header* header, char status) {
+    ex_assert(header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
+
+    if (header->registry_type == FIX_LEN) {
+        T1HeaderMetadata* header_metadata = header->header_metadata;
+        header_metadata->status = status;
+    }
+
+    if (header->registry_type == VAR_LEN) {
+        T2HeaderMetadata* header_metadata = header->header_metadata;
+        header_metadata->status = status;
+    }
+}
+
+void header_increment_next(Header* header, size_t appended_bytes) {
+    ex_assert(header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
+
+
+    if (header->registry_type == FIX_LEN) {
+        T1HeaderMetadata* header_metadata = header->header_metadata;
+        if (appended_bytes != 0) {
+            header_metadata->proxRRN++;
+        }
+    }
+
+    if (header->registry_type == VAR_LEN) {
+        T2HeaderMetadata* header_metadata = header->header_metadata;
+        header_metadata->proxByteOffset += appended_bytes;
+    }
+
+
 }

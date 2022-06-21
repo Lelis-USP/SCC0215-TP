@@ -11,6 +11,8 @@ typedef struct T2HeaderMetadata {
     int32_t nroRegRem;
 } T2HeaderMetadata;
 
+static const size_t T2_HEADER_SIZE = 190;
+
 typedef struct T2RegistryMetadata {
     char removido;
     uint32_t tamanhoRegistro;

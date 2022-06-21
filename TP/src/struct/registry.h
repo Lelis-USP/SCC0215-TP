@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdbool.h>
+
 #include "common.h"
 #include "registry_content.h"
 
@@ -32,6 +34,7 @@ void destroy_header(Header* header);
 void destroy_registry(Registry* registry);
 
 Header* build_header(RegistryType registry_type);
+Header* build_default_header(RegistryType registry_type);
 Registry* build_registry(Header* header);
 Registry* build_registry_from_type(RegistryType registry_type);
 
@@ -41,3 +44,10 @@ size_t read_header(Header* header, FILE* src);
 
 size_t write_registry(Registry* registry, FILE* dest);
 size_t read_registry(Registry* registry, FILE* src);
+
+// Utils
+bool is_registry_removed(Registry* registry);
+
+void set_header_status(Header* header, char status);
+
+void header_increment_next(Header* header, size_t appended_bytes);

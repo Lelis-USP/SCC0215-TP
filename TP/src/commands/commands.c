@@ -8,12 +8,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common.h"
 #include "../const/const.h"
+#include "../exception/exception.h"
 #include "../utils/csv_parser.h"
 #include "../utils/provided_functions.h"
-#include "../utils/registry_builder.h"
-#include "../exception/exception.h"
+#include "../utils/registry_loader.h"
+#include "common.h"
 
 
 // Commands //
@@ -23,11 +23,11 @@
  * @param args command args
  */
 void c_parse_and_serialize(CommandArgs* args) {
-    ex_assert(args->sourceFile != NULL, EX_COMMAND_PARSE_ERROR);
-    ex_assert(args->destFile != NULL, EX_COMMAND_PARSE_ERROR);
+    ex_assert(args->source_file != NULL, EX_COMMAND_PARSE_ERROR);
+    ex_assert(args->dest_file != NULL, EX_COMMAND_PARSE_ERROR);
 
     // Open CSV file
-    FILE* csv_file = fopen(args->sourceFile, "r");
+    FILE* csv_file = fopen(args->source_file, "r");
     ex_assert(csv_file != NULL, EX_FILE_ERROR);
 
     // Load CSV Content
@@ -35,54 +35,33 @@ void c_parse_and_serialize(CommandArgs* args) {
     fclose(csv_file);
 
     // Write contents into the file
-    FILE* dest_file = fopen(args->destFile, "wb");
+    FILE* dest_file = fopen(args->dest_file, "wb");
     ex_assert(dest_file != NULL, EX_FILE_ERROR);
 
-    if (args->fileType == TYPE1) {
-        // Write default header with a bad status
-        T1Header header = DEFAULT_T1_HEADER;// Copy default T1Header
-        header.status = STATUS_BAD;
-        t1_write_header(&header, dest_file);
+    // Write default header with a bad status
+    Header* header = build_default_header(args->registry_type);
+    set_header_status(header, STATUS_BAD);
+    write_header(header, dest_file);
 
-        // Write registries
-        CSVLine* current_line = csv_content->head_line;
-        while (current_line != NULL) {
-            T1Registry* registry = t1_build_from_csv_line(csv_content, current_line);
-            t1_write_registry(registry, dest_file);
-            current_line = current_line->next;
-            header.proxRRN++;
-            t1_destroy_registry(registry);
-        }
-
-        // Update status at beginning
-        header.status = STATUS_GOOD;
-        fseek(dest_file, 0, SEEK_SET);
-        t1_write_header(&header, dest_file);
-    } else {
-        // Write default header with a bad status
-        T2Header header = DEFAULT_T2_HEADER;// Copy default T1Header
-        header.status = STATUS_BAD;
-        t2_write_header(&header, dest_file);
-
-        // Write registries
-        CSVLine* current_line = csv_content->head_line;
-        while (current_line != NULL) {
-            T2Registry* registry = t2_build_from_csv_line(csv_content, current_line);
-            size_t written_bytes = t2_write_registry(registry, dest_file);
-            current_line = current_line->next;
-            header.proxByteOffset += (int64_t) written_bytes;
-            t2_destroy_registry(registry);
-        }
-
-        // Update status at beginning
-        header.status = STATUS_GOOD;
-        fseek(dest_file, 0, SEEK_SET);
-        t2_write_header(&header, dest_file);
+    // Write registries
+    CSVLine* current_line = csv_content->head_line;
+    Registry* registry = build_registry(header);
+    while (current_line != NULL) {
+        load_registry_from_csv_line(registry, csv_content, current_line);
+        size_t appended_bytes = write_registry(registry, dest_file);
+        current_line = current_line->next;
+        header_increment_next(header, appended_bytes);
     }
+    destroy_registry(registry);
+
+    // Update status at beginning
+    set_header_status(header, STATUS_GOOD);
+    fseek(dest_file, 0, SEEK_SET);
+    write_header(header, dest_file);
+    destroy_header(header);
+
     fclose(dest_file);
-
-    print_autocorrection_checksum(args->destFile);
-
+    print_autocorrection_checksum(args->dest_file);
     destroy_csvcontent(csv_content);// Free CSVContent's memory
 }
 
@@ -91,12 +70,12 @@ void c_parse_and_serialize(CommandArgs* args) {
  * @param args command args
  */
 void c_deserialize_and_print(CommandArgs* args) {
-    ex_assert(args->sourceFile != NULL, EX_COMMAND_PARSE_ERROR);
+    ex_assert(args->source_file != NULL, EX_COMMAND_PARSE_ERROR);
 
-    FILE* file = fopen(args->sourceFile, "rb");
+    FILE* file = fopen(args->source_file, "rb");
     ex_assert(file != NULL, EX_FILE_ERROR);
 
-    if (args->fileType == TYPE1) {
+    if (args->registry_type == TYPE1) {
         T1Header* header = t1_new_header();
         size_t read_bytes = t1_read_header(header, file);
         bool printed = false;
@@ -164,13 +143,13 @@ void c_deserialize_and_print(CommandArgs* args) {
  * @param args command args
  */
 void c_deserialize_filter_and_print(CommandArgs* args) {
-    ex_assert(args->sourceFile != NULL, EX_COMMAND_PARSE_ERROR);
-    FilterArgs* filters = args->specificData;
+    ex_assert(args->source_file != NULL, EX_COMMAND_PARSE_ERROR);
+    FilterArgs* filters = args->specific_data;
 
-    FILE* file = fopen(args->sourceFile, "rb");
+    FILE* file = fopen(args->source_file, "rb");
     ex_assert(file != NULL, EX_FILE_ERROR);
 
-    if (args->fileType == TYPE1) {
+    if (args->registry_type == TYPE1) {
         T1Header* header = t1_new_header();
         size_t read_bytes = t1_read_header(header, file);
         bool printed = false;
@@ -238,13 +217,13 @@ void c_deserialize_filter_and_print(CommandArgs* args) {
  * @param args command args
  */
 void c_deserialize_direct_access_rrn_and_print(CommandArgs* args) {
-    ex_assert(args->sourceFile != NULL, EX_COMMAND_PARSE_ERROR);
-    SearchByRRNArgs* rrn_args = args->specificData;
+    ex_assert(args->source_file != NULL, EX_COMMAND_PARSE_ERROR);
+    SearchByRRNArgs* rrn_args = args->specific_data;
 
-    FILE* file = fopen(args->sourceFile, "rb");
+    FILE* file = fopen(args->source_file, "rb");
     ex_assert(file != NULL, EX_FILE_ERROR);
 
-    if (args->fileType == TYPE1) {
+    if (args->registry_type == TYPE1) {
         T1Header* header = t1_new_header();
         size_t read_bytes = t1_read_header(header, file);
 
@@ -299,95 +278,47 @@ void print_fixed_len_str(char* desc, size_t n) {
  * @param header current file header
  * @param registry current registry
  */
-void t1_print_registry(T1Header* header, T1Registry* registry) {
+void print_registry(Header* header, Registry* registry) {
+    HeaderContent* header_content = header->header_content;
+    RegistryContent* registry_content = registry->registry_content;
     // Marca
-    print_column_description(header->desC6);
-    if (registry->marca == NULL) {
+    print_column_description(header_content->desC6);
+    if (registry_content->marca == NULL) {
         puts(NULL_FIELD_REPR);
     } else {
-        printf("%s\n", registry->marca);
+        printf("%s\n", registry_content->marca);
     }
 
     // Modelo
-    print_column_description(header->desC7);
-    if (registry->modelo == NULL) {
+    print_column_description(header_content->desC7);
+    if (registry_content->modelo == NULL) {
         puts(NULL_FIELD_REPR);
     } else {
-        printf("%s\n", registry->modelo);
+        printf("%s\n", registry_content->modelo);
     }
 
     // Ano Fabricacao
-    print_column_description(header->desC2);
-    if (registry->ano == -1) {
+    print_column_description(header_content->desC2);
+    if (registry_content->ano == -1) {
         puts(NULL_FIELD_REPR);
     } else {
-        printf("%d\n", registry->ano);
+        printf("%d\n", registry_content->ano);
     }
 
     // Cidade
-    print_column_description(header->desC5);
-    if (registry->cidade == NULL) {
+    print_column_description(header_content->desC5);
+    if (registry_content->cidade == NULL) {
         puts(NULL_FIELD_REPR);
     } else {
-        printf("%s\n", registry->cidade);
+        printf("%s\n", registry_content->cidade);
     }
 
     // Qtt
-    print_column_description(header->desC3);
-    if (registry->qtt == -1) {
+    print_column_description(header_content->desC3);
+    if (registry_content->qtt == -1) {
         puts(NULL_FIELD_REPR);
     } else {
-        printf("%d\n", registry->qtt);
-    }
-
-    putchar('\n');
-}
-
-/**
- * Print a given type 2 registry into stdout
- *
- * @param header current file header
- * @param registry current registry
- */
-void t2_print_registry(T2Header* header, T2Registry* registry) {
-    // Marca
-    print_column_description(header->desC6);
-    if (registry->marca == NULL) {
-        puts(NULL_FIELD_REPR);
-    } else {
-        printf("%s\n", registry->marca);
-    }
-
-    // Modelo
-    print_column_description(header->desC7);
-    if (registry->modelo == NULL) {
-        puts(NULL_FIELD_REPR);
-    } else {
-        printf("%s\n", registry->modelo);
-    }
-
-    // Ano Fabricacao
-    print_column_description(header->desC2);
-    if (registry->ano == -1) {
-        puts(NULL_FIELD_REPR);
-    } else {
-        printf("%d\n", registry->ano);
-    }
-
-    // Cidade
-    print_column_description(header->desC5);
-    if (registry->cidade == NULL) {
-        puts(NULL_FIELD_REPR);
-    } else {
-        printf("%s\n", registry->cidade);
-    }
-
-    // Qtt
-    print_column_description(header->desC3);
-    if (registry->qtt == -1) {
-        puts(NULL_FIELD_REPR);
-    } else {
-        printf("%d\n", registry->qtt);
+        printf("%d\n", registry_content->qtt);
     }
 
     putchar('\n');
@@ -421,8 +352,8 @@ int32_t parse_int32_filter(FilterArgs* filter) {
  * @param filters target filters
  * @return if registry matches the filters or not
  */
-bool t1_registry_filter_match(T1Registry* registry, FilterArgs* filters) {
-    if (registry->removido == REMOVED) {
+bool registry_filter_match(Registry* registry, FilterArgs* filters) {
+    if (is_registry_removed(registry)) {
         return false;
     }
 
@@ -430,29 +361,30 @@ bool t1_registry_filter_match(T1Registry* registry, FilterArgs* filters) {
         return true;
     }
 
+    RegistryContent* registry_content = registry->registry_content;
     FilterArgs* cur_filter = filters;
 
     while (cur_filter != NULL) {
         bool is_null = cur_filter->value == NULL || cur_filter->value[0] == '\0';
         if (strcmp(ID_FIELD_NAME, cur_filter->key) == 0) {// id
             int32_t id_filter = parse_int32_filter(cur_filter);
-            if (id_filter != registry->id) {
+            if (id_filter != registry_content->id) {
                 return false;
             }
         } else if (strcmp(ANO_FIELD_NAME, cur_filter->key) == 0) {// ano
             int32_t ano_filter = parse_int32_filter(cur_filter);
-            if (ano_filter != registry->ano) {
+            if (ano_filter != registry_content->ano) {
                 return false;
             }
         } else if (strcmp(QTT_FIELD_NAME, cur_filter->key) == 0) {// qtt
             int32_t qtt_filter = parse_int32_filter(cur_filter);
-            if (qtt_filter != registry->qtt) {
+            if (qtt_filter != registry_content->qtt) {
                 return false;
             }
         } else if (strcmp(SIGLA_FIELD_NAME, cur_filter->key) == 0) {// sigla
             // In case filter is NULL, check sigla for null value
             if (cur_filter->value == NULL) {
-                if (registry->sigla[0] != '$') {
+                if (registry_content->sigla[0] != '$') {
                     return false;
                 }
             } else {
@@ -464,136 +396,41 @@ bool t1_registry_filter_match(T1Registry* registry, FilterArgs* filters) {
 
                 // compare char-by-char sigla and filter (if filter is smaller, ensure remaining bytes are NULL)
                 for (size_t i = 0; i < REGISTRY_SIGLA_SIZE; i++) {
-                    if (i >= len && registry->sigla[i] != FILLER_BYTE[0]) {
+                    if (i >= len && registry_content->sigla[i] != FILLER_BYTE[0]) {
                         return false;
-                    } else if (cur_filter->value[i] != registry->sigla[i]) {
-                        return false;
-                    }
-                }
-            }
-        } else if (strcmp(CIDADE_FIELD_NAME, cur_filter->key) == 0) {// cidade
-            // Check for null fields
-            if (is_null || registry->cidade == NULL) {
-                // Check for non-matching null fields
-                if ((is_null && registry->cidade != NULL) || (registry->cidade == NULL && !is_null)) {
-                    return false;
-                }
-            } else if (strcmp(cur_filter->value, registry->cidade) != 0) {// Compare non-null values directly
-                return false;
-            }
-        } else if (strcmp(MARCA_FIELD_NAME, cur_filter->key) == 0) {// marca
-            // Check for null fields
-            if (is_null || registry->marca == NULL) {
-                // Check for non-matching null fields
-                if ((is_null && registry->marca != NULL) || (registry->marca == NULL && !is_null)) {
-                    return false;
-                }
-            } else if (strcmp(cur_filter->value, registry->marca) != 0) {// Compare non-null values directly
-                return false;
-            }
-        } else if (strcmp(MODELO_FIELD_NAME, cur_filter->key) == 0) {// modelo
-            // Check for null fields
-            if (is_null || registry->modelo == NULL) {
-                // Check for non-matching null fields
-                if ((is_null && registry->modelo != NULL) || (registry->modelo == NULL && !is_null)) {
-                    return false;
-                }
-            } else if (strcmp(cur_filter->value, registry->modelo) != 0) {// Compare non-null values directly
-                return false;
-            }
-        }
-
-        cur_filter = cur_filter->next;
-    }
-
-    return true;
-}
-
-
-/**
- * Checks if a registry matches the given filter list
- * @param registry target registry
- * @param filters target filters
- * @return if registry matches the filters or not
- */
-bool t2_registry_filter_match(T2Registry* registry, FilterArgs* filters) {
-    if (registry->removido == REMOVED) {
-        return false;
-    }
-
-    if (filters == NULL) {
-        return true;
-    }
-
-    FilterArgs* cur_filter = filters;
-
-    while (cur_filter != NULL) {
-        bool is_null = cur_filter->value == NULL || cur_filter->value[0] == '\0';
-        if (strcmp(ID_FIELD_NAME, cur_filter->key) == 0) {// id
-            int32_t id_filter = parse_int32_filter(cur_filter);
-            if (id_filter != registry->id) {
-                return false;
-            }
-        } else if (strcmp(ANO_FIELD_NAME, cur_filter->key) == 0) {// ano
-            int32_t ano_filter = parse_int32_filter(cur_filter);
-            if (ano_filter != registry->ano) {
-                return false;
-            }
-        } else if (strcmp(QTT_FIELD_NAME, cur_filter->key) == 0) {// qtt
-            int32_t qtt_filter = parse_int32_filter(cur_filter);
-            if (qtt_filter != registry->qtt) {
-                return false;
-            }
-        } else if (strcmp(SIGLA_FIELD_NAME, cur_filter->key) == 0) {// sigla
-            // In case filter is NULL, check sigla for null value
-            if (cur_filter->value == NULL) {
-                if (registry->sigla[0] != '$') {
-                    return false;
-                }
-            } else {
-                // check if filter is smaller than or equal to the sigla
-                size_t len = strlen(cur_filter->value);
-                if (len > REGISTRY_SIGLA_SIZE) {
-                    return false;
-                }
-
-                // compare char-by-char sigla and filter (if filter is smaller, ensure remaining bytes are NULL)
-                for (size_t i = 0; i < REGISTRY_SIGLA_SIZE; i++) {
-                    if (i >= len && registry->sigla[i] != FILLER_BYTE[0]) {
-                        return false;
-                    } else if (cur_filter->value[i] != registry->sigla[i]) {
+                    } else if (cur_filter->value[i] != registry_content->sigla[i]) {
                         return false;
                     }
                 }
             }
         } else if (strcmp(CIDADE_FIELD_NAME, cur_filter->key) == 0) {// cidade
             // Check for null fields
-            if (is_null || registry->cidade == NULL) {
+            if (is_null || registry_content->cidade == NULL) {
                 // Check for non-matching null fields
-                if ((is_null && registry->cidade != NULL) || (registry->cidade == NULL && !is_null)) {
+                if ((is_null && registry_content->cidade != NULL) || (registry_content->cidade == NULL && !is_null)) {
                     return false;
                 }
-            } else if (strcmp(cur_filter->value, registry->cidade) != 0) {// Compare non-null values directly
+            } else if (strcmp(cur_filter->value, registry_content->cidade) != 0) {// Compare non-null values directly
                 return false;
             }
         } else if (strcmp(MARCA_FIELD_NAME, cur_filter->key) == 0) {// marca
             // Check for null fields
-            if (is_null || registry->marca == NULL) {
+            if (is_null || registry_content->marca == NULL) {
                 // Check for non-matching null fields
-                if ((is_null && registry->marca != NULL) || (registry->marca == NULL && !is_null)) {
+                if ((is_null && registry_content->marca != NULL) || (registry_content->marca == NULL && !is_null)) {
                     return false;
                 }
-            } else if (strcmp(cur_filter->value, registry->marca) != 0) {// Compare non-null values directly
+            } else if (strcmp(cur_filter->value, registry_content->marca) != 0) {// Compare non-null values directly
                 return false;
             }
         } else if (strcmp(MODELO_FIELD_NAME, cur_filter->key) == 0) {// modelo
             // Check for null fields
-            if (is_null || registry->modelo == NULL) {
+            if (is_null || registry_content->modelo == NULL) {
                 // Check for non-matching null fields
-                if ((is_null && registry->modelo != NULL) || (registry->modelo == NULL && !is_null)) {
+                if ((is_null && registry_content->modelo != NULL) || (registry_content->modelo == NULL && !is_null)) {
                     return false;
                 }
-            } else if (strcmp(cur_filter->value, registry->modelo) != 0) {// Compare non-null values directly
+            } else if (strcmp(cur_filter->value, registry_content->modelo) != 0) {// Compare non-null values directly
                 return false;
             }
         }

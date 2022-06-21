@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include "../struct/registry.h"
 
 #define MIN_COMMAND 1
 #define MAX_COMMAND 4
@@ -17,18 +18,13 @@ enum Command {
     DESERIALIZE_SEARCH_RRN_AND_PRINT = 4
 };
 
-enum FileType {
-    TYPE1 = 1,
-    TYPE2 = 2
-};
-
 typedef struct CommandArgs {
     enum Command command;
-    enum FileType fileType;
-    char* sourceFile;
-    char* destFile;
+    RegistryType registry_type;
+    char* source_file;
+    char* dest_file;
     FILE* source;
-    void* specificData;
+    void* specific_data;
 } CommandArgs;
 
 typedef struct SearchByRRNArgs {

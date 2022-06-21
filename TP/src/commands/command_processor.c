@@ -60,18 +60,18 @@ CommandArgs* read_command(FILE* source) {
     fscanf(source, "%511s", buffer);// Read up to buffer size or separator
 
     // Check if a valid file type was inserted
-    args->fileType = TYPE2;
-    if (strncasecmp("tipo1", buffer, 6) == 0) {
-        args->fileType = TYPE1;
+    args->registry_type = FIX_LEN;
+    if (strncasecmp("tipo2", buffer, 6) == 0) {
+        args->registry_type = VAR_LEN;
     } else {
-        ex_assert(strncasecmp("tipo2", buffer, 6) == 0, EX_COMMAND_PARSE_ERROR);// If not "tipo1", assert that the input was "tipo2"
+        ex_assert(strncasecmp("tipo1", buffer, 6) == 0, EX_COMMAND_PARSE_ERROR);// If not "tipo2", assert that the input was "tipo1"
     }
 
     // Read input file path
     fscanf(source, "%511s", buffer);// Read up to buffer size or separator
     size_t path_len = strnlen(buffer, 512);
-    args->sourceFile = calloc(path_len + 1, sizeof(char));
-    memcpy(args->sourceFile, buffer, path_len);
+    args->source_file = calloc(path_len + 1, sizeof(char));
+    memcpy(args->source_file, buffer, path_len);
 
     // Handle command-specific params
     uint32_t n_filters;
@@ -82,8 +82,8 @@ CommandArgs* read_command(FILE* source) {
             // Read output file
             fscanf(source, "%511s", buffer);// Read up to buffer size or separator
             size_t dest_path_len = strnlen(buffer, 512);
-            args->destFile = calloc(dest_path_len + 1, sizeof(char));
-            memcpy(args->destFile, buffer, dest_path_len);
+            args->dest_file = calloc(dest_path_len + 1, sizeof(char));
+            memcpy(args->dest_file, buffer, dest_path_len);
             break;
 
         case DESERIALIZE_AND_PRINT:
@@ -113,7 +113,7 @@ CommandArgs* read_command(FILE* source) {
 
                 // Update list tail ref
                 if (tail == NULL) {
-                    args->specificData = new_filter;
+                    args->specific_data = new_filter;
                 } else {
                     tail->next = new_filter;
                 }
@@ -126,7 +126,7 @@ CommandArgs* read_command(FILE* source) {
             // Read RRN value
             rrn_args = malloc(sizeof(struct SearchByRRNArgs));
             fscanf(source, "%lu", &rrn_args->rrn);
-            args->specificData = rrn_args;
+            args->specific_data = rrn_args;
             break;
     }
 
