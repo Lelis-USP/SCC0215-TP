@@ -20,6 +20,10 @@
 void execute(FILE* data_in) {
     CommandArgs* args = read_command(data_in);
 
+    if (args == NULL) {
+        return;
+    }
+
     switch (args->command) {
         case PARSE_AND_SERIALIZE:
             c_parse_and_serialize(args);
@@ -49,8 +53,7 @@ CommandArgs* read_command(FILE* source) {
     fscanf(source, "%u", &command);
 
     // Validate command
-    ex_assert(command >= MIN_COMMAND, EX_COMMAND_PARSE_ERROR);
-    ex_assert(command <= MAX_COMMAND, EX_COMMAND_PARSE_ERROR);
+    ex_assert(command >= MIN_COMMAND && command <= MAX_COMMAND, EX_COMMAND_PARSE_ERROR);
 
     // Create base args
     CommandArgs* args = new_command_args(command);
@@ -60,11 +63,17 @@ CommandArgs* read_command(FILE* source) {
     fscanf(source, "%511s", buffer);// Read up to buffer size or separator
 
     // Check if a valid file type was inserted
-    args->registry_type = FIX_LEN;
-    if (strncasecmp("tipo2", buffer, 6) == 0) {
+    args->registry_type = UNKNOWN;
+    if (strncasecmp("tipo1", buffer, 6) == 0) {
+        args->registry_type = FIX_LEN;
+    } else if (strncasecmp("tipo2", buffer, 6) == 0) {
         args->registry_type = VAR_LEN;
-    } else {
-        ex_assert(strncasecmp("tipo1", buffer, 6) == 0, EX_COMMAND_PARSE_ERROR);// If not "tipo2", assert that the input was "tipo1"
+    }
+
+    if (args->registry_type == UNKNOWN) {
+        puts(EX_COMMAND_PARSE_ERROR);
+        destroy_command_args(args);
+        return NULL;
     }
 
     // Read input file path
@@ -90,7 +99,7 @@ CommandArgs* read_command(FILE* source) {
             break;
 
         case DESERIALIZE_FILTER_AND_PRINT:
-            scanf("%u", &n_filters);
+            fscanf(source, "%u", &n_filters);
 
             // Build filter list
             FilterArgs* tail = NULL;

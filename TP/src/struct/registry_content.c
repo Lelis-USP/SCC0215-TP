@@ -107,6 +107,7 @@ size_t read_registry_content(RegistryContent* registry_content, FILE* src, size_
             registry_content->modelo = var_len_field.data;
         } else {
             ex_raise(EX_FILE_ERROR);
+            return 0;
         }
     }
 

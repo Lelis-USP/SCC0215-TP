@@ -207,6 +207,7 @@ size_t write_header(Header* header, FILE* dest) {
             break;
         default:
             ex_raise(EX_CORRUPTED_REGISTRY);
+            break;
     }
 
     return written_bytes;
@@ -229,6 +230,7 @@ size_t read_header(Header* header, FILE* src) {
             break;
         default:
             ex_raise(EX_CORRUPTED_REGISTRY);
+            break;
     }
 
     return read_bytes;
@@ -249,6 +251,7 @@ size_t write_registry(Registry* registry, FILE* dest) {
             break;
         default:
             ex_raise(EX_CORRUPTED_REGISTRY);
+            break;
     }
 
     return written_bytes;
@@ -271,6 +274,7 @@ size_t read_registry(Registry* registry, FILE* src) {
             break;
         default:
             ex_raise(EX_CORRUPTED_REGISTRY);
+            break;
     }
 
     return read_bytes;
