@@ -8,12 +8,11 @@ to-do
 
 ## Improvoments
 
-- [ ] Better reuse code between T1Regisry and T2Registry
+- [x] Better reuse code between T1Regisry and T2Registry
   - Maybe apply some kind of generic implementation over void\* and a registry type indicator.
 - [x] Global error management
 - [ ] Auto resizing buffers
-- [ ] Detect column from header definitions
-- [ ] Check next registry pointers for var_len registries (might end up early)
-- [ ] Skip remaining length of VAR_LEN types to handle previously removed fields
-- [ ] Check for missing closes and MEM leaks
+- (Canceled) Detect column from header definitions
+- [x] Skip remaining length of VAR_LEN types to handle previously removed fields
+- [x] Check for missing closes and MEM leaks
 - [ ] Extend documentation for new features

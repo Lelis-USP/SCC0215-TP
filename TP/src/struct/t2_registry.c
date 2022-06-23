@@ -143,12 +143,25 @@ size_t t2_read_registry(Registry* registry, FILE* src) {
     read_bytes += fread_member_field(registry_metadata, tamanhoRegistro, src);
     read_bytes += fread_member_field(registry_metadata, prox, src);
 
+   size_t expected_size = registry_metadata->tamanhoRegistro + T2_IGNORED_SIZE;
+
+   if (registry_metadata->removido == REMOVED) {
+       fseek(src, (long) (expected_size-read_bytes), SEEK_CUR);
+       return expected_size;
+   }
+
     // Read registry content
     read_bytes += read_registry_content(registry_content, src, (registry_metadata->tamanhoRegistro + T2_IGNORED_SIZE) - read_bytes);
 
-    ex_assert(read_bytes == (registry_metadata->tamanhoRegistro + T2_IGNORED_SIZE), EX_CORRUPTED_REGISTRY);
+    // Skip remaining bytes
+    if (read_bytes < expected_size) {
+        fseek(src, (long) (expected_size-read_bytes), SEEK_CUR);
+    }
 
-    return read_bytes;
+    // Check for over-reads
+    ex_assert(read_bytes <= expected_size, EX_CORRUPTED_REGISTRY);
+
+    return expected_size;
 }
 
 void t2_setup_header_metadata(T2HeaderMetadata* header_metadata) {

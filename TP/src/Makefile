@@ -5,7 +5,7 @@ CC = gcc
 CFLAGS = -std=gnu99
 CFLAGS_PROD = -w -O2
 CFLAGS_TEST = -g -Wall -Wshadow
-CFLAGS_DEBUG = -g -Wall -Wshadow -fsanitize=leaks -fsanitize=address -fsanitize=undefined
+CFLAGS_DEBUG = -g -Wall -Wshadow -fsanitize=leak -fsanitize=address -fsanitize=undefined -DDEBUG=1
 
 env ?= prod
 

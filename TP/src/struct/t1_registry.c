@@ -102,6 +102,11 @@ size_t t1_read_registry(Registry* registry, FILE* src) {
     read_bytes += fread_member_field(registry_metadata, removido, src);
     read_bytes += fread_member_field(registry_metadata, prox, src);
 
+    if (registry_metadata->removido == REMOVED) {
+        fseek(src, (long) (T1_REGISTRY_SIZE-read_bytes), SEEK_CUR);
+        return T1_REGISTRY_SIZE;
+    }
+
     // Read registry content
     read_bytes += read_registry_content(registry_content, src, T1_REGISTRY_SIZE - read_bytes);
 

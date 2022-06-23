@@ -38,7 +38,7 @@ static inline void ex_assert_dbg_func(int cond, const char* message, int line, c
  *
  * Simple assertion implementation that checks for a condition, in case it fails log the error location and message
  */
-#define ex_assert(cond, message) ex_assert(cond, message, __LINE__, __FILE__, __func__);
+#define ex_assert(cond, message) ex_assert_dbg_func(cond, message, __LINE__, __FILE__, __func__);
 
 // PROD //
 #else
