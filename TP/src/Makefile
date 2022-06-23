@@ -4,13 +4,18 @@ OBJECTS=$(SOURCES:.c=.o)
 CC = gcc
 CFLAGS = -std=gnu99
 CFLAGS_PROD = -w -O2
-CFLAGS_TEST = -g -Wall -Wshadow -fsanitize=address -fsanitize=undefined
+CFLAGS_TEST = -g -Wall -Wshadow
+CFLAGS_DEBUG = -g -Wall -Wshadow -fsanitize=leaks -fsanitize=address -fsanitize=undefined
 
 env ?= prod
 
 ifeq ($(env), test)
 	CFLAGS += $(CFLAGS_TEST)
-else
+endif
+ifeq ($(env), debug)
+	CFLAGS += $(CFLAGS_DEBUG)
+endif
+ifeq ($(env), prod)
 	CFLAGS += $(CFLAGS_PROD)
 endif
 

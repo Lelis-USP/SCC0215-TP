@@ -17,3 +17,5 @@ void ex_assert(int cond, const char* message) {
         ex_raise(message);
     }
 }
+
+#include <assert.h>

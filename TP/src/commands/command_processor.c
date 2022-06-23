@@ -125,7 +125,8 @@ CommandArgs* read_command(FILE* source) {
         case DESERIALIZE_SEARCH_RRN_AND_PRINT:
             // Read RRN value
             rrn_args = malloc(sizeof(struct SearchByRRNArgs));
-            fscanf(source, "%llu", &rrn_args->rrn);
+            rrn_args->rrn = 0;
+            fscanf(source, "%lu", &rrn_args->rrn);
             args->specific_data = rrn_args;
             break;
     }
