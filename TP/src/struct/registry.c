@@ -222,10 +222,10 @@ size_t read_header(Header* header, FILE* src) {
 
     switch (header->registry_type) {
         case FIX_LEN:
-            read_bytes += t1_read_header(header);
+            read_bytes += t1_read_header(header, src);
             break;
         case VAR_LEN:
-            read_bytes += t2_read_header(header);
+            read_bytes += t2_read_header(header, src);
             break;
         default:
             ex_raise(EX_CORRUPTED_REGISTRY);
@@ -304,6 +304,22 @@ void set_header_status(Header* header, char status) {
     }
 }
 
+char get_header_status(Header* header) {
+    ex_assert(header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
+
+    if (header->registry_type == FIX_LEN) {
+        T1HeaderMetadata* header_metadata = header->header_metadata;
+        return header_metadata->status;
+    }
+
+    if (header->registry_type == VAR_LEN) {
+        T2HeaderMetadata* header_metadata = header->header_metadata;
+        return header_metadata->status;
+    }
+
+    return -1;
+}
+
 void header_increment_next(Header* header, size_t appended_bytes) {
     ex_assert(header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
 
@@ -317,8 +333,53 @@ void header_increment_next(Header* header, size_t appended_bytes) {
 
     if (header->registry_type == VAR_LEN) {
         T2HeaderMetadata* header_metadata = header->header_metadata;
-        header_metadata->proxByteOffset += appended_bytes;
+        header_metadata->proxByteOffset += (int64_t) appended_bytes;
+    }
+}
+
+size_t get_max_offset(Header* header) {
+    ex_assert(header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
+
+    if (header->registry_type == FIX_LEN) {
+        T1HeaderMetadata* header_metadata = header->header_metadata;
+        return T1_HEADER_SIZE + ((size_t) header_metadata->proxRRN * T1_REGISTRY_SIZE);
     }
 
+    if (header->registry_type == VAR_LEN) {
+        T2HeaderMetadata* header_metadata = header->header_metadata;
+        return header_metadata->proxByteOffset;
+    }
 
+    return -1;
+}
+
+bool seek_registry(Header* header, FILE* file, size_t target) {
+    ex_assert(header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
+
+    if (header->registry_type == FIX_LEN) {
+        T1HeaderMetadata* header_metadata = header->header_metadata;
+        size_t offset = T1_HEADER_SIZE + (target * T1_REGISTRY_SIZE);
+        size_t max_offset = T1_HEADER_SIZE + (header_metadata->proxRRN * T1_REGISTRY_SIZE);
+        if (offset >= max_offset) {
+            fseek(file, (long) max_offset, SEEK_SET);
+            return false;
+        }
+
+        fseek(file, (long) offset, SEEK_SET);
+        return true;
+    }
+
+    if (header->registry_type == VAR_LEN) {
+        T2HeaderMetadata* header_metadata = header->header_metadata;
+
+        if (header_metadata->proxByteOffset >= target) {
+            fseek(file, (long) header_metadata->proxByteOffset, SEEK_SET);
+            return false;
+        }
+
+        fseek(file, (long) target, SEEK_SET);
+        return true;
+    }
+
+    return false;
 }

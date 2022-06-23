@@ -15,3 +15,5 @@ to-do
 - [ ] Detect column from header definitions
 - [ ] Check next registry pointers for var_len registries (might end up early)
 - [ ] Skip remaining length of VAR_LEN types to handle previously removed fields
+- [ ] Check for missing closes and MEM leaks
+- [ ] Extend documentation for new features

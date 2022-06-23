@@ -45,9 +45,14 @@ size_t read_header(Header* header, FILE* src);
 size_t write_registry(Registry* registry, FILE* dest);
 size_t read_registry(Registry* registry, FILE* src);
 
+bool seek_registry(Header* header, FILE* file, size_t target);
+
 // Utils
 bool is_registry_removed(Registry* registry);
 
 void set_header_status(Header* header, char status);
+char get_header_status(Header* header);
 
 void header_increment_next(Header* header, size_t appended_bytes);
+
+size_t get_max_offset(Header* header);

@@ -73,7 +73,7 @@ void registry_load_csv_sigla(CSVField* field, char* sigla) {
  * @param csv_line current csv line
  * @return the built registry
  */
-void load_registry_from_csv_line(Registry* registry, CSVContent* csv_content, CSVLine* csv_line) {
+void load_registry_from_csv_line(Registry* registry, CSVLine* csv_line) {
     RegistryContent* registry_content = registry->registry_content;
 
     CSVField* current_field = csv_line->head_field;

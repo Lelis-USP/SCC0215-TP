@@ -2,11 +2,15 @@
 
 cur_dir=$(pwd)
 src_dir=$cur_dir/../src
+build=1
 
-cd $src_dir
-make clean all
 
-cd $cur_dir
+if [ $build == 1 ]; then
+  cd $src_dir
+  make clean all
+  cd $cur_dir
+fi
+
 for i in {1..16}
 do
   echo "Testing $i"
@@ -17,5 +21,8 @@ do
   fi
 done
 
-cd $src_dir
-make clean
+if [ $build == 1 ]; then
+  cd $src_dir
+  make clean
+  cd $cur_dir
+fi

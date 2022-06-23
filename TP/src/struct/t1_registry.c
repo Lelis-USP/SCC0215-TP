@@ -54,6 +54,8 @@ size_t t1_read_header(Header* header, FILE* src) {
     // Read metadata after content
     read_bytes += fread_member_field(metadata, proxRRN, src);
     read_bytes += fread_member_field(metadata, nroRegRem, src);
+
+    return read_bytes;
 }
 
 size_t t1_write_registry(Registry* registry, FILE* dest) {

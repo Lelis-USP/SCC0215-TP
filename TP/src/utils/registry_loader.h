@@ -10,4 +10,4 @@
 #include "../struct/t2_registry.h"
 #include "../utils/csv_parser.h"
 
-void load_registry_from_csv_line(Registry* registry, CSVContent* csv_content, CSVLine* csv_line);
+void load_registry_from_csv_line(Registry* registry, CSVLine* csv_line);

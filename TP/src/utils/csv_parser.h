@@ -43,3 +43,4 @@ void destroy_csvline(CSVLine* line);
 void destroy_csvfield(CSVField* field);
 
 CSVContent* read_csv(FILE* csv_file, bool has_header);
+void stream_csv(FILE* csv_file, void (*it) (int idx, CSVLine* cur_line, void* passthrough), void* passthrough);

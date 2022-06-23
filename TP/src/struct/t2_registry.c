@@ -58,6 +58,8 @@ size_t t2_read_header(Header* header, FILE* src) {
     // Read metadata after content
     read_bytes += fread_member_field(metadata, proxByteOffset, src);
     read_bytes += fread_member_field(metadata, nroRegRem, src);
+
+    return read_bytes;
 }
 
 size_t t2_registry_size(Registry* registry) {

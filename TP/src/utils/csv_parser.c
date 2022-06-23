@@ -4,7 +4,6 @@
 
 #include "csv_parser.h"
 
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -256,4 +255,83 @@ CSVContent* read_csv(FILE* csv_file, bool has_header) {
     }
 
     return content;
+}
+
+void stream_csv(FILE* csv_file, void (*it) (int idx, CSVLine* cur_line, void* passthrough), void* passthrough) {
+    // Static buffer, since teoretically, a registry couldn't even surpass 100 bytes
+    char buffer[512];
+
+    uint16_t buffer_idx = 0;
+
+    CSVLine* cur_line = new_csvline();
+    int idx = 0;
+    CSVField* cur_field = NULL;
+
+    // Loop the entire file until EOF
+    while (1) {
+        int32_t cur_char = getc(csv_file);
+
+        if (cur_char == '\r') {
+            cur_char = getc(csv_file);
+        }
+
+        // Handle separators
+        if (cur_char == ',' || cur_char == '\n' || cur_char == EOF) {
+
+            // Handle field creation and insertion
+            if (buffer_idx != 0 || cur_char == ',') {
+                // Create the new field
+                CSVField* new_field = new_csvfield();
+
+                // Copy buffer into new field
+                if (buffer_idx != 0) {
+                    new_field->content = calloc(buffer_idx + 1, sizeof(char));
+                    memcpy(new_field->content, buffer, buffer_idx);
+                    new_field->content[buffer_idx] = '\0';
+                    new_field->content_len = buffer_idx;
+                    buffer_idx = 0;
+                }
+
+                // Insert new field in the line's field list
+                if (cur_field == NULL) {
+                    cur_field = new_field;
+                    cur_line->head_field = cur_field;
+                    cur_line->n_fields++;
+                } else {
+                    cur_field->next = new_field;
+                    cur_field = new_field;
+                    cur_line->n_fields++;
+                }
+            }
+
+            // Handle line break/EOF
+            if (cur_char == '\n' || cur_char == EOF) {
+                if (cur_line->n_fields != 0) {
+                    it(idx, cur_line, passthrough);
+                    idx++;
+                    if (cur_char != EOF) {
+                        // Create next line
+                        destroy_csvline(cur_line);
+                        cur_line = new_csvline();
+                        cur_field = NULL;
+                    }
+                }
+            }
+
+            if (cur_char == EOF) {
+                break;
+            }
+
+            continue;
+        }
+
+        // Prevent buffer overflow
+        ex_assert(buffer_idx < 512, EX_GENERIC_ERROR);
+
+        // Write char to buffer
+        buffer[buffer_idx] = (char) cur_char;
+        buffer_idx++;
+    }
+
+    destroy_csvline(cur_line);
 }

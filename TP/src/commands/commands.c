@@ -18,6 +18,26 @@
 
 // Commands //
 
+typedef struct CSVParseArgs {
+    Header* header;
+    Registry* registry;
+    FILE* dest_file;
+} CSVParseArgs;
+
+void _parse_csv_line(int idx, CSVLine* line, void* passthrough) {
+    CSVParseArgs* args = passthrough;
+
+    // Ignore header
+    if (idx == 0) {
+        return;
+    }
+
+    setup_registry(args->registry);
+    load_registry_from_csv_line(args->registry, line);
+    size_t appended_bytes = write_registry(args->registry, args->dest_file);
+    header_increment_next(args->header, appended_bytes);
+}
+
 /**
  * Parse csv file and build registry
  * @param args command args
@@ -31,8 +51,6 @@ void c_parse_and_serialize(CommandArgs* args) {
     ex_assert(csv_file != NULL, EX_FILE_ERROR);
 
     // Load CSV Content
-    CSVContent* csv_content = read_csv(csv_file, true);
-    fclose(csv_file);
 
     // Write contents into the file
     FILE* dest_file = fopen(args->dest_file, "wb");
@@ -44,15 +62,20 @@ void c_parse_and_serialize(CommandArgs* args) {
     write_header(header, dest_file);
 
     // Write registries
-    CSVLine* current_line = csv_content->head_line;
-    Registry* registry = build_registry(header);
-    while (current_line != NULL) {
-        load_registry_from_csv_line(registry, csv_content, current_line);
-        size_t appended_bytes = write_registry(registry, dest_file);
-        current_line = current_line->next;
-        header_increment_next(header, appended_bytes);
-    }
+    Registry* registry = new_registry();
+    registry->registry_type = args->registry_type;
+
+    CSVParseArgs csv_parse_args = {
+        header,
+        registry,
+        dest_file
+    };
+
+    stream_csv(csv_file, _parse_csv_line, &csv_parse_args);
+
     destroy_registry(registry);
+
+    fclose(csv_file);
 
     // Update status at beginning
     set_header_status(header, STATUS_GOOD);
@@ -62,7 +85,6 @@ void c_parse_and_serialize(CommandArgs* args) {
 
     fclose(dest_file);
     print_autocorrection_checksum(args->dest_file);
-    destroy_csvcontent(csv_content);// Free CSVContent's memory
 }
 
 /**
@@ -75,66 +97,35 @@ void c_deserialize_and_print(CommandArgs* args) {
     FILE* file = fopen(args->source_file, "rb");
     ex_assert(file != NULL, EX_FILE_ERROR);
 
-    if (args->registry_type == TYPE1) {
-        T1Header* header = t1_new_header();
-        size_t read_bytes = t1_read_header(header, file);
-        bool printed = false;
+    Header* header = build_header(args->registry_type);
+    size_t read_bytes = read_header(header, file);
+    bool printed = false;
 
-        if (read_bytes == 0 || header->status == STATUS_BAD) {
-            fclose(file);
-            ex_raise(EX_FILE_ERROR);
-        } else {
-            T1Registry* registry = t1_new_registry();
-            for (uint32_t i = 0; i < header->proxRRN; i++) {
-                read_bytes += t1_read_registry(registry, file);
-
-                if (registry == NULL || registry->removido == REMOVED) {
-                    continue;
-                }
-
-                t1_print_registry(header, registry);
-                printed = true;
-            }
-            t1_destroy_registry(registry);
-
-            if (!printed) {
-                fclose(file);
-                ex_raise(EX_REGISTRY_NOT_FOUND);
-            }
-        }
-
-        t1_destroy_header(header);
+    if (read_bytes == 0 || get_header_status(header) == STATUS_BAD) {
+        fclose(file);
+        ex_raise(EX_FILE_ERROR);
     } else {
-        T2Header* header = t2_new_header();
-        size_t read_bytes = t2_read_header(header, file);
-        bool printed = false;
+        Registry* registry = build_registry(header);
+        size_t max_offset = get_max_offset(header);
+        while (read_bytes < max_offset) {
+            read_bytes += read_registry(registry, file);
 
-        if (read_bytes == 0 || header->status == STATUS_BAD) {
-            fclose(file);
-            ex_raise(EX_FILE_ERROR);
-        } else {
-
-            T2Registry* registry = t2_new_registry();
-            while (read_bytes < header->proxByteOffset) {
-                read_bytes += t2_read_registry(registry, file);
-
-                if (registry == NULL || registry->removido == REMOVED) {
-                    continue;
-                }
-
-                t2_print_registry(header, registry);
-                printed = true;
+            if (registry == NULL || is_registry_removed(registry)) {
+                continue;
             }
-            t2_destroy_registry(registry);
 
-            if (!printed) {
-                fclose(file);
-                ex_raise(EX_REGISTRY_NOT_FOUND);
-            }
+            print_registry(header, registry);
+            printed = true;
         }
+        destroy_registry(registry);
 
-        t2_destroy_header(header);
+        if (!printed) {
+            fclose(file);
+            ex_raise(EX_REGISTRY_NOT_FOUND);
+        }
     }
+
+    destroy_header(header);
     fclose(file);
 }
 
@@ -149,66 +140,35 @@ void c_deserialize_filter_and_print(CommandArgs* args) {
     FILE* file = fopen(args->source_file, "rb");
     ex_assert(file != NULL, EX_FILE_ERROR);
 
-    if (args->registry_type == TYPE1) {
-        T1Header* header = t1_new_header();
-        size_t read_bytes = t1_read_header(header, file);
-        bool printed = false;
+    Header* header = build_header(args->registry_type);
+    size_t read_bytes = read_header(header, file);
+    bool printed = false;
 
-        if (read_bytes == 0 || header->status == STATUS_BAD) {
-            fclose(file);
-            ex_raise(EX_FILE_ERROR);
-        } else {
-            T1Registry* registry = t1_new_registry();
-            for (uint32_t i = 0; i < header->proxRRN; i++) {
-                read_bytes += t1_read_registry(registry, file);
-
-                if (registry == NULL || !t1_registry_filter_match(registry, filters)) {
-                    continue;
-                }
-
-                t1_print_registry(header, registry);
-                printed = true;
-            }
-            t1_destroy_registry(registry);
-
-            if (!printed) {
-                fclose(file);
-                ex_raise(EX_REGISTRY_NOT_FOUND);
-            }
-        }
-
-        t1_destroy_header(header);
+    if (read_bytes == 0 || get_header_status(header) == STATUS_BAD) {
+        fclose(file);
+        ex_raise(EX_FILE_ERROR);
     } else {
-        T2Header* header = t2_new_header();
-        size_t read_bytes = t2_read_header(header, file);
-        bool printed = false;
+        Registry* registry = build_registry(header);
+        size_t max_offset = get_max_offset(header);
+        while (read_bytes < max_offset) {
+            read_bytes += read_registry(registry, file);
 
-        if (read_bytes == 0 || header->status == STATUS_BAD) {
-            fclose(file);
-            ex_raise(EX_FILE_ERROR);
-        } else {
-
-            T2Registry* registry = t2_new_registry();
-            while (read_bytes < header->proxByteOffset) {
-                read_bytes += t2_read_registry(registry, file);
-
-                if (registry == NULL || !t2_registry_filter_match(registry, filters)) {
-                    continue;
-                }
-
-                t2_print_registry(header, registry);
-                printed = true;
+            if (registry == NULL || is_registry_removed(registry) || !registry_filter_match(registry, filters)) {
+                continue;
             }
-            t2_destroy_registry(registry);
 
-            if (!printed) {
-                fclose(file);
-                ex_raise(EX_REGISTRY_NOT_FOUND);
-            }
+            print_registry(header, registry);
+            printed = true;
         }
+        destroy_registry(registry);
 
-        t2_destroy_header(header);
+        if (!printed) {
+            fclose(file);
+            ex_raise(EX_REGISTRY_NOT_FOUND);
+        }
     }
+
+    destroy_header(header);
     fclose(file);
 }
 
@@ -218,43 +178,39 @@ void c_deserialize_filter_and_print(CommandArgs* args) {
  */
 void c_deserialize_direct_access_rrn_and_print(CommandArgs* args) {
     ex_assert(args->source_file != NULL, EX_COMMAND_PARSE_ERROR);
+    ex_assert(args->registry_type == FIX_LEN, EX_FILE_ERROR);
+
     SearchByRRNArgs* rrn_args = args->specific_data;
 
     FILE* file = fopen(args->source_file, "rb");
     ex_assert(file != NULL, EX_FILE_ERROR);
 
-    if (args->registry_type == TYPE1) {
-        T1Header* header = t1_new_header();
-        size_t read_bytes = t1_read_header(header, file);
+    Header* header = build_header(args->registry_type);
+    size_t read_bytes = read_header(header, file);
 
-        if (read_bytes == 0 || header->status == STATUS_BAD) {
-            fclose(file);
-            ex_raise(EX_FILE_ERROR);
-        } else if (rrn_args->rrn >= header->proxRRN) {
-            fclose(file);
-            ex_raise(EX_REGISTRY_NOT_FOUND);
-        } else {
-            int64_t jump_size = T1_TOTAL_REGISTRY_SIZE * rrn_args->rrn;
-            fseek(file, jump_size, SEEK_CUR);
-
-            T1Registry* registry = t1_new_registry();
-            t1_read_registry(registry, file);
-
-            if (registry != NULL && registry->removido == NOT_REMOVED) {
-                t1_print_registry(header, registry);
-            } else {
-                fclose(file);
-                ex_raise(EX_REGISTRY_NOT_FOUND);
-            }
-
-            t1_destroy_registry(registry);
-        }
-
-        t1_destroy_header(header);
-    } else {
+    if (read_bytes == 0 || get_header_status(header) == STATUS_BAD) {
         fclose(file);
         ex_raise(EX_FILE_ERROR);
     }
+
+    bool found_registry = seek_registry(header, file, rrn_args->rrn);
+    if (!found_registry) {
+        fclose(file);
+        ex_raise(EX_REGISTRY_NOT_FOUND);
+    }
+
+    Registry* registry = build_registry(header);
+    read_registry(registry, file);
+
+    if (registry == NULL || is_registry_removed(registry)) {
+        fclose(file);
+        ex_raise(EX_REGISTRY_NOT_FOUND);
+    }
+
+    print_registry(header, registry);
+    destroy_registry(registry);
+    destroy_header(header);
+
     fclose(file);
 }
 

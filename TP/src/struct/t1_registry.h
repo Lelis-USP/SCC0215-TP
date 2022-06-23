@@ -4,6 +4,7 @@
 #include "registry_content.h"
 #include "registry.h"
 
+#define T1_HEADER_SIZE 182
 #define T1_REGISTRY_SIZE 97
 
 typedef struct T1HeaderMetadata {
