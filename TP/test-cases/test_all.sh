@@ -28,9 +28,10 @@ for i in {1..16}
 do
   echo "Testing $i"
   $test_script "$i"
-  if [ $? != 0 ]; then
+  ec=$?
+  if [ $ec != 0 ]; then
     echo "Failed test $i"
-    exit 1
+    exit $ec
   fi
 done
 
