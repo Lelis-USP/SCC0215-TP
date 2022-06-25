@@ -8,14 +8,7 @@
 #include <string.h>
 
 #include "../const/const.h"
-
-/**
- * Maximum of two elements macro
- * @param a first element
- * @param b second element
- * @return the biggest of a and b
- */
-#define max(a, b) ((a) > (b) ? (a) : (b))
+#include "../utils/utils.h"
 
 /**
  * Load a variable length string from a csv field
@@ -68,10 +61,9 @@ void registry_load_csv_sigla(CSVField* field, char* sigla) {
 }
 
 /**
- * Build a T1 registry from a CSV line
+ * Load a registry from a CSV line
  * @param csv_content target csv file
  * @param csv_line current csv line
- * @return the built registry
  */
 void load_registry_from_csv_line(Registry* registry, CSVLine* csv_line) {
     RegistryContent* registry_content = registry->registry_content;

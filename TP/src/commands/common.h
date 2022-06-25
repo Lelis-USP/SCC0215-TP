@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include "../struct/registry.h"
 
+// Consts //
 #define MIN_COMMAND 1
 #define MAX_COMMAND 4
 
@@ -17,6 +18,17 @@ enum Command {
     DESERIALIZE_FILTER_AND_PRINT = 3,
     DESERIALIZE_SEARCH_RRN_AND_PRINT = 4
 };
+
+// Field names for input parsing
+static const char ID_FIELD_NAME[] = "id";
+static const char ANO_FIELD_NAME[] = "ano";
+static const char QTT_FIELD_NAME[] = "qtt";
+static const char SIGLA_FIELD_NAME[] = "sigla";
+static const char CIDADE_FIELD_NAME[] = "cidade";
+static const char MARCA_FIELD_NAME[] = "marca";
+static const char MODELO_FIELD_NAME[] = "modelo";
+
+// Structs //
 
 typedef struct CommandArgs {
     enum Command command;
@@ -38,14 +50,15 @@ typedef struct FilterArgs {
     struct FilterArgs* next;
 } FilterArgs;
 
-static const char ID_FIELD_NAME[] = "id";
-static const char ANO_FIELD_NAME[] = "ano";
-static const char QTT_FIELD_NAME[] = "qtt";
-static const char SIGLA_FIELD_NAME[] = "sigla";
-static const char CIDADE_FIELD_NAME[] = "cidade";
-static const char MARCA_FIELD_NAME[] = "marca";
-static const char MODELO_FIELD_NAME[] = "modelo";
-
-
+/**
+ * Create command args struct
+ * @param command target command
+ * @return the struct ptr
+ */
 CommandArgs* new_command_args(enum Command command);
+
+/**
+ * Destroy command args struct
+ * @param args target struct
+ */
 void destroy_command_args(CommandArgs* args);

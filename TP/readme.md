@@ -15,4 +15,5 @@ to-do
 - (Canceled) Detect column from header definitions
 - [x] Skip remaining length of VAR_LEN types to handle previously removed fields
 - [x] Check for missing closes and MEM leaks
-- [ ] Extend documentation for new features
+- [x] Extend documentation for new features
+- [ ] How will removed var_len fields work with their registry_size??

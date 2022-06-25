@@ -11,7 +11,7 @@
 
 /**
  * Allocate and preset a new CSVHeader
- * @return
+ * @return the newly allocated header
  */
 CSVHeader* new_csvheader() {
     CSVHeader* header = malloc(sizeof(struct CSVHeader));
@@ -23,7 +23,7 @@ CSVHeader* new_csvheader() {
 
 /**
  * Allocate and preset a new CSVField
- * @return
+ * @return the newly allocated field
  */
 CSVField* new_csvfield() {
     CSVField* field = malloc(sizeof(struct CSVField));
@@ -34,8 +34,8 @@ CSVField* new_csvfield() {
 }
 
 /**
- * Allocate and preset a new CSVLine entity
- * @return
+ * Allocate and preset a new CSVLine
+ * @return the newly allocated line
  */
 CSVLine* new_csvline() {
     CSVLine* line = malloc(sizeof(struct CSVLine));
@@ -46,8 +46,8 @@ CSVLine* new_csvline() {
 }
 
 /**
- * Allocate and preset a new CSVContent entity
- * @return
+ * Allocate and preset a new CSVContent
+ * @return the newly allocated content
  */
 CSVContent* new_csvcontent() {
     CSVContent* content = malloc(sizeof(struct CSVContent));
@@ -59,7 +59,7 @@ CSVContent* new_csvcontent() {
 
 /**
  * Free a CSVContent entity and all of its fields
- * @param content
+ * @param content target ptr
  */
 void destroy_csvcontent(CSVContent* content) {
     if (content == NULL) return;
@@ -83,7 +83,7 @@ void destroy_csvcontent(CSVContent* content) {
 
 /**
  * Free a CSVHeader entity and all of its fields
- * @param header
+ * @param header target ptr
  */
 void destroy_csvheader(CSVHeader* header) {
     if (header == NULL) return;
@@ -101,7 +101,7 @@ void destroy_csvheader(CSVHeader* header) {
 
 /**
  * Free a CSVLine entity and all of its fields
- * @param line
+ * @param line target ptr
  */
 void destroy_csvline(CSVLine* line) {
     if (line == NULL) return;
@@ -121,7 +121,7 @@ void destroy_csvline(CSVLine* line) {
 
 /**
  * Free a CSVField entity and its contents
- * @param field
+ * @param field target ptr
  */
 void destroy_csvfield(CSVField* field) {
     free(field->content);
@@ -257,6 +257,12 @@ CSVContent* read_csv(FILE* csv_file, bool has_header) {
     return content;
 }
 
+/**
+ * Stream a csv line by line
+ * @param csv_file targe CSV file
+ * @param it the iterating function called with each line
+ * @param passthrough passthrough params to the iterating function
+ */
 void stream_csv(FILE* csv_file, void (*it) (int idx, CSVLine* cur_line, void* passthrough), void* passthrough) {
     // Static buffer, since teoretically, a registry couldn't even surpass 100 bytes
     char buffer[512];

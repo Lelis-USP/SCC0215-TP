@@ -42,8 +42,29 @@ typedef struct VarLenStrField {
 
 
 // Functions //
+/**
+ * Write a variable length string into a file
+ * @param str the string to be written
+ * @param len the string length
+ * @param code the column code
+ * @param file the target file
+ * @return number of bytes written
+ */
 size_t fwrite_var_len_str(char* str, strlen_t len, char* code, FILE* file);
+
+/**
+ * Reads a variable length string from a file
+ * @param file the source file
+ * @return the variable length spring data
+ */
 VarLenStrField fread_var_len_str(FILE* file);
+
+/**
+ * Write n filler bytes into a file
+ * @param n number of bytes to write
+ * @param file target file
+ * @return number of bytes written
+ */
 size_t fill_bytes(size_t n, FILE* file);
 
 
@@ -63,7 +84,7 @@ size_t fill_bytes(size_t n, FILE* file);
 #define fwrite_member_field(struct_ptr, member, file) fwrite(&((struct_ptr)->member), 1, sizeof((struct_ptr)->member), file)
 
 /**
- * Macro for reading a structs field into a file
+ * Macro for reading a structs field from a file
  *
  * @param struct_ptr target struct's pointer
  * @param member struct's member to be read
@@ -72,7 +93,7 @@ size_t fill_bytes(size_t n, FILE* file);
 #define fread_member_field(struct_ptr, member, file) fread(&((struct_ptr)->member), 1, sizeof((struct_ptr)->member), file)
 
 /**
- * Macro for writing variable length string struct fields into a file in a cleaner way to read
+ * Macro for writing variable length strings struct fields into a file in a cleaner way to read
  *
  * @param struct_ptr target struct's pointer
  * @param str_pointer_field struct's string pointer field name

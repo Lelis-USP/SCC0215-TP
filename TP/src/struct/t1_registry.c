@@ -1,9 +1,19 @@
+/*
+*  Daniel Henrique Lelis de Almeida - 12543822
+*/
+
 #include "t1_registry.h"
 
 #include <stdlib.h>
 
 #include "../exception/exception.h"
 
+/**
+ * Writes the given header (of type FIX_LEN) into the target file
+ * @param header header to be written
+ * @param dest destination file
+ * @return the amount of bytes written
+ */
 size_t t1_write_header(Header* header, FILE* dest) {
     // Basic validation
     ex_assert(header != NULL, EX_GENERIC_ERROR);
@@ -32,6 +42,12 @@ size_t t1_write_header(Header* header, FILE* dest) {
     return written_bytes;
 }
 
+/**
+ * Reads the given header (of type FIX_LEN) from the target file
+ * @param header header to be read into
+ * @param src source file
+ * @return the amount of bytes read
+ */
 size_t t1_read_header(Header* header, FILE* src) {
     ex_assert(header != NULL, EX_GENERIC_ERROR);
     ex_assert(header->header_content != NULL, EX_GENERIC_ERROR);
@@ -58,6 +74,12 @@ size_t t1_read_header(Header* header, FILE* src) {
     return read_bytes;
 }
 
+/**
+ * Writes the given registry (of type FIX_LEN) into the target file
+ * @param registry registry to be written
+ * @param dest destination file
+ * @return the amount of bytes written
+ */
 size_t t1_write_registry(Registry* registry, FILE* dest) {
     ex_assert(registry != NULL, EX_GENERIC_ERROR);
     ex_assert(registry->registry_content != NULL, EX_GENERIC_ERROR);
@@ -85,6 +107,12 @@ size_t t1_write_registry(Registry* registry, FILE* dest) {
     return written_bytes;
 }
 
+/**
+ * Reads the given registry (of type FIX_LEN) from the target file
+ * @param registry registry to be read into
+ * @param src source file
+ * @return the amount of bytes read
+ */
 size_t t1_read_registry(Registry* registry, FILE* src) {
     ex_assert(registry != NULL, EX_GENERIC_ERROR);
     ex_assert(registry->registry_content != NULL, EX_GENERIC_ERROR);
@@ -117,6 +145,10 @@ size_t t1_read_registry(Registry* registry, FILE* src) {
     return read_bytes + remaining_bytes;
 }
 
+/**
+ * Setups the given FIX_LEN header metadata
+ * @param header_metadata target header metadata
+ */
 void t1_setup_header_metadata(T1HeaderMetadata* header_metadata) {
     header_metadata->status = STATUS_BAD;
     header_metadata->topo = -1;
@@ -124,23 +156,39 @@ void t1_setup_header_metadata(T1HeaderMetadata* header_metadata) {
     header_metadata->nroRegRem = 0;
 }
 
+/**
+ * Setups the given FIX_LEN registry metadata
+ * @param registry_metadata
+ */
 void t1_setup_registry_metadata(T1RegistryMetadata* registry_metadata) {
     registry_metadata->removido = NOT_REMOVED;
     registry_metadata->prox = -1;
 }
 
+/**
+ * Allocates and setup a new FIX_LEN header metadata
+ * @return the allocated header metadata
+ */
 T1HeaderMetadata* t1_new_header_metadata() {
     T1HeaderMetadata* header_metadata = malloc(sizeof (struct T1HeaderMetadata));
     t1_setup_header_metadata(header_metadata);
     return header_metadata;
 }
 
+/**
+ * Allocates and setup a new FIX_LEN registry metadata
+ * @return the allocated registry metadata
+ */
 T1RegistryMetadata* t1_new_registry_metadata() {
     T1RegistryMetadata* registry_metadata = malloc(sizeof (struct T1RegistryMetadata));
     t1_setup_registry_metadata(registry_metadata);
     return registry_metadata;
 }
 
+/**
+ * Destroys (frees) the given header metadata and its contents
+ * @param header_metadata the target header metadata
+ */
 void t1_destroy_header_metadata(T1HeaderMetadata* header_metadata) {
     if (header_metadata == NULL) {
         return;
@@ -148,6 +196,11 @@ void t1_destroy_header_metadata(T1HeaderMetadata* header_metadata) {
 
     free(header_metadata);
 }
+
+/**
+ * Destroys (frees) the given registry metadata and its contents
+ * @param registry_metadata the target registry metadata
+ */
 void t1_destroy_registry_metadata(T1RegistryMetadata* registry_metadata) {
     if (registry_metadata == NULL) {
         return;

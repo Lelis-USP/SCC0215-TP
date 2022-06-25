@@ -18,12 +18,21 @@
 
 // Commands //
 
+/**
+ * Struct to hold shared information for the csv_stream processing function
+ */
 typedef struct CSVParseArgs {
     Header* header;
     Registry* registry;
     FILE* dest_file;
 } CSVParseArgs;
 
+/**
+ * Function used for csv_stream, receives each CSV line, parse it into a registry and serialize it into the dest file
+ * @param idx the line index
+ * @param line the CSV line info
+ * @param passthrough a CSVParseArgs pointer with the shared information from the original calling function
+ */
 void parse_csv_line(int idx, CSVLine* line, void* passthrough) {
     CSVParseArgs* args = passthrough;
 
@@ -48,13 +57,12 @@ void c_parse_and_serialize(CommandArgs* args) {
 
     // Open CSV file
     FILE* csv_file = fopen(args->source_file, "r");
-
     if (csv_file == NULL) {
         puts(EX_FILE_ERROR);
         return;
     }
 
-    // Write contents into the file
+    // Open destination file
     FILE* dest_file = fopen(args->dest_file, "wb");
     if (dest_file == NULL) {
         puts(EX_FILE_ERROR);
@@ -71,25 +79,30 @@ void c_parse_and_serialize(CommandArgs* args) {
     Registry* registry = new_registry();
     registry->registry_type = args->registry_type;
 
+    // Create shared data for stream passthrough
     CSVParseArgs csv_parse_args = {
         header,
         registry,
         dest_file
     };
 
+    // CSV streaming: loop each line calling the before-defined parse_csv_line function
     stream_csv(csv_file, parse_csv_line, &csv_parse_args);
 
+    // Cleanup
     destroy_registry(registry);
-
     fclose(csv_file);
 
     // Update status at beginning
     set_header_status(header, STATUS_GOOD);
     fseek(dest_file, 0, SEEK_SET);
     write_header(header, dest_file);
+
+    // Cleanup
+    fclose(dest_file);
     destroy_header(header);
 
-    fclose(dest_file);
+    // Autocorrection stuff
     print_autocorrection_checksum(args->dest_file);
 }
 
@@ -100,24 +113,31 @@ void c_parse_and_serialize(CommandArgs* args) {
 void c_deserialize_and_print(CommandArgs* args) {
     ex_assert(args->source_file != NULL, EX_COMMAND_PARSE_ERROR);
 
+    // Open source file
     FILE* file = fopen(args->source_file, "rb");
     if (file == NULL) {
         puts(EX_FILE_ERROR);
         return;
     }
 
+    // Allocate and read header
     Header* header = build_header(args->registry_type);
     size_t read_bytes = read_header(header, file);
     bool printed = false;
 
+    // Check for read failure or bad status
     if (read_bytes == 0 || get_header_status(header) == STATUS_BAD) {
         puts(EX_FILE_ERROR);
     } else {
+        // Allocate shared registry (freed only at the end, information is always reset on the read_registry call)
         Registry* registry = build_registry(header);
         size_t max_offset = get_max_offset(header);
+
+        // Loop each registry until reaching the file limit (defined on header)
         while (read_bytes < max_offset) {
             read_bytes += read_registry(registry, file);
 
+            // On read failure or removal, skip
             if (registry == NULL || is_registry_removed(registry)) {
                 continue;
             }
@@ -125,13 +145,17 @@ void c_deserialize_and_print(CommandArgs* args) {
             print_registry(header, registry);
             printed = true;
         }
+
+        // Cleanup
         destroy_registry(registry);
 
+        // No registry found
         if (!printed) {
             puts(EX_REGISTRY_NOT_FOUND);
         }
     }
 
+    // Cleanup
     destroy_header(header);
     fclose(file);
 }
@@ -142,26 +166,35 @@ void c_deserialize_and_print(CommandArgs* args) {
  */
 void c_deserialize_filter_and_print(CommandArgs* args) {
     ex_assert(args->source_file != NULL, EX_COMMAND_PARSE_ERROR);
+
+    // Extract filters from args (and type-cast it)
     FilterArgs* filters = args->specific_data;
 
+    // Open source file
     FILE* file = fopen(args->source_file, "rb");
     if (file == NULL) {
         puts(EX_FILE_ERROR);
         return;
     }
 
+    // Allocate and read header
     Header* header = build_header(args->registry_type);
     size_t read_bytes = read_header(header, file);
     bool printed = false;
 
+    // Check for read failure or bad status
     if (read_bytes == 0 || get_header_status(header) == STATUS_BAD) {
         puts(EX_FILE_ERROR);
     } else {
+        // Allocate shared registry (freed only at the end, information is always reset on the read_registry call)
         Registry* registry = build_registry(header);
         size_t max_offset = get_max_offset(header);
+
+        // Loop each registry until reaching the file limit (defined on header)
         while (read_bytes < max_offset) {
             read_bytes += read_registry(registry, file);
 
+            // On read failure, removal or no filter match, skip
             if (registry == NULL || is_registry_removed(registry) || !registry_filter_match(registry, filters)) {
                 continue;
             }
@@ -169,13 +202,17 @@ void c_deserialize_filter_and_print(CommandArgs* args) {
             print_registry(header, registry);
             printed = true;
         }
+
+        // Cleanup
         destroy_registry(registry);
 
+        // No registry found
         if (!printed) {
             puts(EX_REGISTRY_NOT_FOUND);
         }
     }
 
+    // Cleanup
     destroy_header(header);
     fclose(file);
 }
@@ -186,19 +223,28 @@ void c_deserialize_filter_and_print(CommandArgs* args) {
  */
 void c_deserialize_direct_access_rrn_and_print(CommandArgs* args) {
     ex_assert(args->source_file != NULL, EX_COMMAND_PARSE_ERROR);
-    ex_assert(args->registry_type == FIX_LEN, EX_FILE_ERROR);
 
+    // Check for registry type
+    if (args->registry_type != FIX_LEN) {
+        puts(EX_COMMAND_PARSE_ERROR);
+        return;
+    }
+
+    // Extract rrn from args (and type-cast it)
     SearchByRRNArgs* rrn_args = args->specific_data;
 
+    // Open source file
     FILE* file = fopen(args->source_file, "rb");
     if (file == NULL) {
         puts(EX_FILE_ERROR);
         return;
     }
 
+    // Allocate and read header
     Header* header = build_header(args->registry_type);
     size_t read_bytes = read_header(header, file);
 
+    // Check for read failure or bad status
     if (read_bytes == 0 || get_header_status(header) == STATUS_BAD) {
         puts(EX_FILE_ERROR);
         fclose(file);
@@ -206,7 +252,9 @@ void c_deserialize_direct_access_rrn_and_print(CommandArgs* args) {
         return;
     }
 
+    // Jump to target position
     bool found_registry = seek_registry(header, file, rrn_args->rrn);
+    // If the position is out of bounds, the registry is marked as not found
     if (!found_registry) {
         puts(EX_REGISTRY_NOT_FOUND);
         fclose(file);
@@ -214,18 +262,20 @@ void c_deserialize_direct_access_rrn_and_print(CommandArgs* args) {
         return;
     }
 
+    // Read registry from target position
     Registry* registry = build_registry(header);
     read_registry(registry, file);
 
+    // Check if the registry exists
     if (!is_registry_removed(registry)) {
         print_registry(header, registry);
     } else {
         puts(EX_REGISTRY_NOT_FOUND);
     }
 
+    // Cleanup
     destroy_registry(registry);
     destroy_header(header);
-
     fclose(file);
 }
 

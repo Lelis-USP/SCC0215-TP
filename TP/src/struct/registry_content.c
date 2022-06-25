@@ -1,3 +1,7 @@
+/*
+*  Daniel Henrique Lelis de Almeida - 12543822
+*/
+
 #include "registry_content.h"
 
 #include <stdlib.h>
@@ -5,6 +9,12 @@
 
 #include "../exception/exception.h"
 
+/**
+ * Writes the header contents into the given file
+ * @param header_content target header contents
+ * @param dest destination file
+ * @return amount of bytes written
+ */
 size_t write_header_content(HeaderContent* header_content, FILE* dest) {
     ex_assert(header_content != NULL, EX_GENERIC_ERROR);
     ex_assert(dest != NULL, EX_FILE_ERROR);
@@ -26,6 +36,12 @@ size_t write_header_content(HeaderContent* header_content, FILE* dest) {
     return written_bytes;
 }
 
+/**
+ * Reads the header contents from the given file
+ * @param header_content target header contents
+ * @param src source file
+ * @return amount of bytes read
+ */
 size_t read_header_content(HeaderContent* header_content, FILE* src) {
     ex_assert(header_content != NULL, EX_GENERIC_ERROR);
     setup_header_content(header_content);
@@ -47,6 +63,12 @@ size_t read_header_content(HeaderContent* header_content, FILE* src) {
     return read_bytes;
 }
 
+/**
+ * Writes the registry contents into the given file
+ * @param registry_content target registry contents
+ * @param dest destination file
+ * @return amount of bytes written
+ */
 size_t write_registry_content(RegistryContent* registry_content, FILE* dest) {
     ex_assert(registry_content != NULL, EX_GENERIC_ERROR);
     ex_assert(dest != NULL, EX_FILE_ERROR);
@@ -66,6 +88,13 @@ size_t write_registry_content(RegistryContent* registry_content, FILE* dest) {
     return written_bytes;
 }
 
+/**
+ * Reads the registry contents from the given file
+ * @param registry_content target registry contents on which the data will be read into
+ * @param src source file
+ * @param max_read_bytes maximum amount of bytes to be read
+ * @return amount of bytes read
+ */
 size_t read_registry_content(RegistryContent* registry_content, FILE* src, size_t max_read_bytes) {
     ex_assert(registry_content != NULL, EX_GENERIC_ERROR);
     ex_assert(src != NULL, EX_FILE_ERROR);
@@ -114,10 +143,18 @@ size_t read_registry_content(RegistryContent* registry_content, FILE* src, size_
     return read_bytes;
 }
 
+/**
+ * Setups a given header content
+ * @param header_content
+ */
 void setup_header_content(HeaderContent* header_content) {
     // Nothing to set up
 }
 
+/**
+ * Setups a given registry content
+ * @param registry_content
+ */
 void setup_registry_content(RegistryContent* registry_content) {
     for (uint8_t i = 0; i < REGISTRY_SIGLA_SIZE; i++) {
         registry_content->sigla[i] = FILLER_BYTE[0];
@@ -135,6 +172,10 @@ void setup_registry_content(RegistryContent* registry_content) {
     registry_content->modelo = NULL;
 }
 
+/**
+ * Allocates and setups a new header content
+ * @return the new header content ptr
+ */
 HeaderContent* new_header_content() {
     HeaderContent* header_content = malloc(sizeof(struct HeaderContent));
     ex_assert(header_content != NULL, EX_MEMORY_ERROR);
@@ -142,6 +183,10 @@ HeaderContent* new_header_content() {
     return header_content;
 }
 
+/**
+ * Allocates and setups a new registry content
+ * @return the new registry content ptr
+ */
 RegistryContent* new_registry_content() {
     RegistryContent* registry_content = malloc(sizeof(struct RegistryContent));
     ex_assert(registry_content != NULL, EX_MEMORY_ERROR);
@@ -152,6 +197,10 @@ RegistryContent* new_registry_content() {
     return registry_content;
 }
 
+/**
+ * Destroys (frees) the given header content
+ * @param header_content target header content
+ */
 void destroy_header_content(HeaderContent* header_content) {
     if (header_content == NULL) {
         return;
@@ -159,6 +208,11 @@ void destroy_header_content(HeaderContent* header_content) {
 
     free(header_content);
 }
+
+/**
+ * Destroys (frees) the given registry content
+ * @param registry_content target registry content
+ */
 void destroy_registry_content(RegistryContent* registry_content) {
     if (registry_content == NULL) {
         return;
