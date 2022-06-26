@@ -10,14 +10,15 @@
 
 // Consts //
 #define MIN_COMMAND 1
-#define MAX_COMMAND 5
+#define MAX_COMMAND 6
 
 enum Command {
     PARSE_AND_SERIALIZE = 1,
     DESERIALIZE_AND_PRINT = 2,
     DESERIALIZE_FILTER_AND_PRINT = 3,
     DESERIALIZE_SEARCH_RRN_AND_PRINT = 4,
-    BUILD_INDEX_FROM_REGISTRY = 5
+    BUILD_INDEX_FROM_REGISTRY = 5,
+    REMOVE_REGISTRY = 6
 };
 
 // Field names for input parsing
@@ -50,6 +51,16 @@ typedef struct FilterArgs {
     void* parsed_value;
     struct FilterArgs* next;
 } FilterArgs;
+
+typedef struct RemovalTarget {
+    FilterArgs* indexed_filter_args;
+    FilterArgs* unindexed_filter_args;
+} RemovalTarget;
+
+typedef struct RemovalArgs {
+    uint32_t n_removals;
+    RemovalTarget* removal_targets;
+} RemovalArgs;
 
 /**
  * Create command args struct

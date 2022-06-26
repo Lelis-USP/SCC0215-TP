@@ -45,6 +45,14 @@ void execute(FILE* data_in) {
     destroy_command_args(args);
 }
 
+void read_output_file_path(FILE* source, CommandArgs* args) {
+    char buffer[512];
+    fscanf(source, "%511s", buffer);// Read up to buffer size or separator
+    size_t dest_path_len = strnlen(buffer, 512);
+    args->dest_file = calloc(dest_path_len + 1, sizeof(char));
+    memcpy(args->dest_file, buffer, dest_path_len);
+}
+
 /**
  * Read command information from the given file
  * @param source command source
@@ -92,11 +100,7 @@ CommandArgs* read_command(FILE* source) {
     switch (args->command) {
         case BUILD_INDEX_FROM_REGISTRY:
         case PARSE_AND_SERIALIZE:
-            // Read output file
-            fscanf(source, "%511s", buffer);// Read up to buffer size or separator
-            size_t dest_path_len = strnlen(buffer, 512);
-            args->dest_file = calloc(dest_path_len + 1, sizeof(char));
-            memcpy(args->dest_file, buffer, dest_path_len);
+            read_output_file_path(source, args);
             break;
 
         case DESERIALIZE_AND_PRINT:
@@ -142,6 +146,68 @@ CommandArgs* read_command(FILE* source) {
             fscanf(source, "%lu", &rrn_args->rrn);
             args->specific_data = rrn_args;
             break;
+
+        case REMOVE_REGISTRY:
+            // Load "output file" path
+            read_output_file_path(source, args);
+            RemovalArgs* removal_args = malloc(sizeof (struct RemovalArgs));
+            args->specific_data = removal_args;
+
+            // Load n removals
+            fscanf(source, "%u", &removal_args->n_removals);
+
+            // Allocate removal targets
+            removal_args->removal_targets = calloc(removal_args->n_removals, sizeof (struct RemovalTarget));
+
+            for (uint32_t i = 0; i < removal_args->n_removals; i++) {
+                uint32_t n_fields;
+                fscanf(source, "%u", &n_fields);
+
+                FilterArgs* indexed_tail = NULL;
+                FilterArgs* unindexed_tail = NULL;
+
+                for (uint32_t j = 0; j < n_fields; j++) {
+                    FilterArgs* new_filter = malloc(sizeof(struct FilterArgs));
+                    new_filter->next = NULL;
+                    new_filter->parsed_value = NULL;
+
+                    // Read field name
+                    fscanf(source, "%511s", buffer);
+                    size_t field_len = strnlen(buffer, 512);
+                    new_filter->key = calloc(field_len + 1, sizeof(char));
+                    memcpy(new_filter->key, buffer, field_len);
+
+                    // Read value
+                    scan_quote_string(buffer);
+                    size_t value_len = strnlen(buffer, 512);
+                    new_filter->value = calloc(value_len + 1, sizeof(char));
+                    memcpy(new_filter->value, buffer, value_len);
+
+                    // Check if field is indexed
+                    if (strncmp(ID_FIELD_NAME, new_filter->key, 512) == 0) {
+                        // Update list tail ref
+                        if (indexed_tail == NULL) {
+                            removal_args->removal_targets[i].indexed_filter_args = new_filter;
+                        } else {
+                            unindexed_tail->next = new_filter;
+                        }
+
+                        indexed_tail = new_filter;
+                    } else {
+                        // Update list tail ref
+                        if (unindexed_tail == NULL) {
+                            removal_args->removal_targets[i].unindexed_filter_args = new_filter;
+                        } else {
+                            unindexed_tail->next = new_filter;
+                        }
+
+                        unindexed_tail = new_filter;
+                    }
+                }
+                break;
+            }
+
+
     }
 
     return args;

@@ -322,7 +322,16 @@ void c_build_index_from_registry(CommandArgs* args) {
                 continue;
             }
 
-            index_add(index_header, registry->registry_content->id, registry_reference);
+            bool success = index_add(index_header, registry->registry_content->id, registry_reference);
+
+            if (!success) {
+                puts(EX_FILE_ERROR);
+                destroy_header(header);
+                destroy_registry(registry);
+                destroy_index_header(index_header);
+                fclose(registry_file);
+                return;
+            }
         }
 
         // Cleanup
@@ -344,7 +353,7 @@ void c_build_index_from_registry(CommandArgs* args) {
     }
 
     // Write index
-    write_index(index_header, index_file);
+    written_bytes += write_index(index_header, index_file);
 
     // Update index status
     fseek(index_file, 0, SEEK_SET);

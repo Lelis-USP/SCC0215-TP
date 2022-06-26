@@ -127,7 +127,7 @@ bool index_remove(IndexHeader* index_header, int32_t id) {
     return true;
 }
 
-void index_add(IndexHeader* index_header, int32_t id, uint64_t reference) {
+bool index_add(IndexHeader* index_header, int32_t id, uint64_t reference) {
     ex_assert(index_header != NULL, EX_GENERIC_ERROR);
     ex_assert(index_header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
 
@@ -136,6 +136,8 @@ void index_add(IndexHeader* index_header, int32_t id, uint64_t reference) {
     uint32_t insertion_pos = reserve_pool_position(index_header);
     index_header->index_pool[insertion_pos].id = id;
     index_header->index_pool[insertion_pos].reference = reference;
+
+    return true;
 }
 
 void index_qsort(IndexElement arr[], uint32_t low, uint32_t high) {

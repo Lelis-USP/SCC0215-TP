@@ -17,3 +17,7 @@ to-do
 - [x] Check for missing closes and MEM leaks
 - [x] Extend documentation for new features
 - [ ] How will removed var_len fields work with their registry_size??
+- [ ] Check for duplicate IDs on insertion
+- [ ] Add insertion sort or merge sort for partial sorting
+- [ ] Add partial sort tracking for faster searchs on unordered array
+- [ ] Check for duplicates after build

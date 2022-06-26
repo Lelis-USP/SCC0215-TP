@@ -23,6 +23,18 @@ CommandArgs* new_command_args(enum Command command) {
     return args;
 }
 
+void destroy_filter_args(FilterArgs* filter_args) {
+    FilterArgs* cur = filter_args;
+    while (cur != NULL) {
+        FilterArgs* next = cur->next;
+        free(cur->key);
+        free(cur->value);
+        free(cur->parsed_value);
+        free(cur);
+        cur = next;
+    }
+}
+
 /**
  * Destroy command args struct
  * @param args target struct
@@ -41,15 +53,20 @@ void destroy_command_args(CommandArgs* args) {
 
         // Filter cleanup
         if (args->command == DESERIALIZE_FILTER_AND_PRINT) {
-            FilterArgs* cur = (FilterArgs*) args->specific_data;
-            while (cur != NULL) {
-                FilterArgs* next = cur->next;
-                free(cur->key);
-                free(cur->value);
-                free(cur->parsed_value);
-                free(cur);
-                cur = next;
+            destroy_filter_args((FilterArgs*) args->specific_data);
+        }
+
+        // Removal cleanup
+        if (args->command == REMOVE_REGISTRY) {
+            RemovalArgs* removal_args = args->specific_data;
+            // Free filter chains
+            for (uint32_t i = 0; i < removal_args->n_removals; i++) {
+                RemovalTarget removal_target = removal_args->removal_targets[i];
+                destroy_filter_args(removal_target.indexed_filter_args);
+                destroy_filter_args(removal_target.unindexed_filter_args);
             }
+            free(removal_args->removal_targets);
+            free(removal_args);
         }
     }
 
