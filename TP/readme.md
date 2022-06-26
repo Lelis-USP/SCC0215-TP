@@ -16,8 +16,12 @@ to-do
 - [x] Skip remaining length of VAR_LEN types to handle previously removed fields
 - [x] Check for missing closes and MEM leaks
 - [x] Extend documentation for new features
-- [ ] How will removed var_len fields work with their registry_size??
+- [x] How will removed var_len fields work with their registry_size??
 - [ ] Check for duplicate IDs on insertion
 - [ ] Add insertion sort or merge sort for partial sorting
 - [ ] Add partial sort tracking for faster searchs on unordered array
-- [ ] Check for duplicates after build
+- [ ] Check for duplicates after index build
+- [ ] Optimize index removals
+- [ ] Review documentation & organization
+- [ ] Re-do a general improvements round
+- [ ] Improve TP2 features docs

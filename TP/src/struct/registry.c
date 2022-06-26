@@ -9,6 +9,7 @@
 
 #include "../const/const.h"
 #include "../exception/exception.h"
+#include "../utils/utils.h"
 #include "t1_registry.h"
 #include "t2_registry.h"
 
@@ -61,6 +62,7 @@ void setup_header(Header* header) {
  * @param registry the target registry pointer
  */
 void setup_registry(Registry* registry) {
+    registry->offset = SIZE_MAX;
     switch (registry->registry_type) {
         case FIX_LEN:
             // Setup registry content
@@ -308,6 +310,8 @@ size_t write_registry(Registry* registry, FILE* dest) {
     ex_assert(registry != NULL, EX_GENERIC_ERROR);
     ex_assert(dest != NULL, EX_FILE_ERROR);
 
+    registry->offset = current_offset(dest);
+
     size_t written_bytes = 0;
 
     switch (registry->registry_type) {
@@ -337,6 +341,8 @@ size_t read_registry(Registry* registry, FILE* src) {
 
     setup_registry(registry);
 
+    registry->offset = current_offset(src);
+
     size_t read_bytes = 0;
 
     switch (registry->registry_type) {
@@ -352,6 +358,205 @@ size_t read_registry(Registry* registry, FILE* src) {
     }
 
     return read_bytes;
+}
+
+size_t total_registry_size(Registry* registry) {
+    ex_assert(registry->registry_type != UNKNOWN, EX_GENERIC_ERROR);
+
+    if (registry->registry_type == FIX_LEN) {
+        return T1_REGISTRY_SIZE;
+    }
+
+    if (registry->registry_type == VAR_LEN) {
+        T2RegistryMetadata* registry_metadata = registry->registry_metadata;
+        size_t registry_size = max(t2_minimum_registry_size(registry), registry_metadata->tamanhoRegistro);
+        return T2_IGNORED_SIZE + registry_size;
+    }
+
+    return 0;
+}
+
+void remove_registry(Header* header, Registry* registry, FILE* file) {
+    ex_assert(registry->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
+    ex_assert(registry->offset != SIZE_MAX, EX_CORRUPTED_REGISTRY);
+    ex_assert(header->registry_type == registry->registry_type, EX_CORRUPTED_REGISTRY);
+    ex_assert(file != NULL, EX_FILE_ERROR);
+
+    if (registry->registry_type == FIX_LEN) {
+        T1HeaderMetadata* header_metadata = header->header_metadata;
+        T1RegistryMetadata* registry_metadata = registry->registry_metadata;
+
+        registry_metadata->removido = REMOVED;
+        registry_metadata->prox = header_metadata->topo;
+
+        // Go to the beginning of the target registry
+        go_to_registry(registry, file);
+        write_registry(registry, file);
+
+        header_metadata->topo = (int32_t) get_registry_reference(header, registry->offset);
+        header_metadata->nroRegRem++;
+    }
+
+    if (registry->registry_type == VAR_LEN) {
+        T2HeaderMetadata* header_metadata = header->header_metadata;
+        T2RegistryMetadata* registry_metadata = registry->registry_metadata;
+
+        // Go to the beginning of the target registry
+        int64_t current_top = header_metadata->topo;
+
+        if (current_top != -1) {
+            seek_registry(header, file, current_top);
+            Registry* prev_registry = NULL;
+            Registry* cur_registry = build_registry(header);
+            read_registry(cur_registry, file);
+
+            while (cur_registry != NULL && ((T2RegistryMetadata*)cur_registry->registry_metadata)->tamanhoRegistro >= registry_metadata->tamanhoRegistro) {
+                T2RegistryMetadata* cur_registry_metadata = cur_registry->registry_metadata;
+
+                // If prev doesn't exist, allocate new registry for it
+                if (prev_registry == NULL) {
+                    prev_registry = build_registry(header);
+                }
+
+                // Swap pointers to keep past copy
+                Registry* tmp = cur_registry;
+                cur_registry = prev_registry;
+                prev_registry = tmp;
+
+                if (cur_registry_metadata->prox == -1) {
+                    destroy_registry(cur_registry);
+                    cur_registry = NULL;
+                } else {
+                    // Read new registry on the queue
+                    seek_registry(header, file, cur_registry_metadata->prox);
+                    read_registry(cur_registry, file);
+                }
+            }
+
+            // Biggest size
+            if (prev_registry == NULL) {
+                header_metadata->topo = (int64_t) get_registry_reference(header, registry->offset);
+                registry_metadata->prox = (int64_t) get_registry_reference(header, cur_registry->offset);
+            } else {
+                // Update previous registry's next reference
+                T2RegistryMetadata* prev_registry_metadata = prev_registry->registry_metadata;
+                prev_registry_metadata->prox = (int64_t) get_registry_reference(header, registry->offset);
+                go_to_registry(prev_registry, file);
+                write_registry(prev_registry, file);
+
+                // Update removed registry prox reference
+                if (cur_registry == NULL) { // List end
+                    registry_metadata->prox = -1;
+                } else { // Middle of list
+                    registry_metadata->prox = (int64_t) get_registry_reference(header, cur_registry->offset);
+                }
+            }
+
+            destroy_registry(cur_registry);
+            destroy_registry(prev_registry);
+        } else {
+            header_metadata->topo = (int64_t) get_registry_reference(header, registry->offset);
+            registry_metadata->prox = -1;
+        }
+
+        // Update header removed reg count
+        header_metadata->nroRegRem++;
+
+        // Update removed registry
+        go_to_registry(registry, file);
+        registry_metadata->removido = REMOVED;
+        write_registry(registry, file);
+    }
+}
+
+void add_registry(Header* header, Registry* registry, FILE* file) {
+    ex_assert(header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
+    ex_assert(registry->offset != SIZE_MAX, EX_CORRUPTED_REGISTRY);
+    ex_assert(file != NULL, EX_FILE_ERROR);
+
+    if (header->registry_type == FIX_LEN) {
+        T1HeaderMetadata* header_metadata = header->header_metadata;
+
+        // Reset registry metadata
+        t1_setup_registry_metadata(registry->registry_metadata);
+
+        int32_t stack_top = header_metadata->topo;
+        uint32_t write_location = header_metadata->proxRRN;
+
+        if (stack_top != -1) {
+            // Load top registry
+            Registry* top_registry = build_registry(header);
+            seek_registry(header, file, stack_top);
+            read_registry(top_registry, file);
+
+            T1RegistryMetadata* top_registry_metadata = top_registry->registry_metadata;
+            ex_assert(top_registry_metadata->removido == REMOVED, EX_FILE_ERROR);
+
+            // Update header
+            header_metadata->topo = top_registry_metadata->prox;
+            header_metadata->nroRegRem--;
+
+            // Overwrite deleted registry
+            write_location = stack_top;
+
+            destroy_registry(top_registry);
+        } else {
+            // Appending to the end of file, so increase the next RRN
+            header_metadata->proxRRN++;
+        }
+
+        // Go to the beginning of the target registry
+        seek_registry(header, file, write_location);
+        write_registry(registry, file);
+    }
+
+    if (header->registry_type == VAR_LEN) {
+        T2HeaderMetadata* header_metadata = header->header_metadata;
+
+        // Reset registry metadata
+        t2_setup_registry_metadata(registry->registry_metadata);
+
+        int64_t queue_front = header_metadata->topo;
+        size_t write_offset = header_metadata->proxByteOffset;
+
+        if (queue_front != -1) {
+            // Load top registry
+            Registry* front_registry = build_registry(header);
+            seek_registry(header, file, queue_front);
+            read_registry(front_registry, file);
+
+            T2RegistryMetadata* front_registry_metadata = front_registry->registry_metadata;
+            ex_assert(front_registry_metadata->removido == REMOVED, EX_FILE_ERROR);
+
+            // Check if registry fits
+            if (front_registry_metadata->tamanhoRegistro >= total_registry_size(registry)) {
+                header_metadata->topo = front_registry_metadata->prox;
+                header_metadata->nroRegRem--;
+
+                write_offset = front_registry->offset;
+            }
+            destroy_registry(front_registry);
+        }
+
+        // Go to the beginning of the target registry
+        seek_registry(header, file, write_offset);
+        write_registry(registry, file);
+
+        // Update header's proxByteOffset reference, if needed
+        header_metadata->proxByteOffset = (int64_t) max(header_metadata->proxByteOffset, current_offset(file));
+    }
+}
+
+void go_to_registry(Registry* registry, FILE* file) {
+    go_to_offset(registry->offset, file);
+}
+
+void go_to_offset(size_t offset, FILE* file) {
+    fseek(file, (long) offset, SEEK_SET);
+}
+
+size_t current_offset(FILE* file) {
+    return (size_t) ftell(file);
 }
 
 /**
@@ -482,7 +687,7 @@ bool seek_registry(Header* header, FILE* file, size_t target) {
     if (header->registry_type == VAR_LEN) {
         T2HeaderMetadata* header_metadata = header->header_metadata;
 
-        if (header_metadata->proxByteOffset >= target) {
+        if (header_metadata->proxByteOffset <= target) {
             fseek(file, (long) header_metadata->proxByteOffset, SEEK_SET);
             return false;
         }

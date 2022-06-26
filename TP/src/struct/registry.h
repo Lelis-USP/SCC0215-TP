@@ -34,6 +34,7 @@ typedef struct Registry {
     void* registry_metadata;
     RegistryContent* registry_content;
     RegistryType registry_type;
+    size_t offset;
 } Registry;
 
 // Memory management
@@ -137,6 +138,16 @@ size_t write_registry(Registry* registry, FILE* dest);
  */
 size_t read_registry(Registry* registry, FILE* src);
 
+// Operations //
+
+size_t total_registry_size(Registry* registry);
+
+void remove_registry(Header* header, Registry* registry, FILE* file);
+void add_registry(Header* header, Registry* registry, FILE* file);
+
+void go_to_registry(Registry* registry, FILE* file);
+void go_to_offset(size_t offset, FILE* file);
+size_t current_offset(FILE* file);
 
 // Utils
 

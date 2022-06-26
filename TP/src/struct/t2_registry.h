@@ -55,7 +55,7 @@ size_t t2_read_header(Header* header, FILE* src);
  * @param registry the target registry
  * @return the minimum required size for the registry (except for the ignored parts)
  */
-size_t t2_registry_size(Registry* registry);
+size_t t2_minimum_registry_size(Registry* registry);
 
 /**
  * Writes the given registry (of type VAR_LEN) into the target file

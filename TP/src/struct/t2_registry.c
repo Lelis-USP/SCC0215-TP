@@ -56,8 +56,8 @@ size_t t2_read_header(Header* header, FILE* src) {
     ex_assert(header->registry_type == VAR_LEN, EX_GENERIC_ERROR);
     ex_assert(src != NULL, EX_FILE_ERROR);
 
-    T2HeaderMetadata *metadata = header->header_metadata;
-    HeaderContent *content = header->header_content;
+    T2HeaderMetadata* metadata = header->header_metadata;
+    HeaderContent* content = header->header_content;
 
     // Assumes that header is already set-up on parent call
     size_t read_bytes = 0;
@@ -80,7 +80,7 @@ size_t t2_read_header(Header* header, FILE* src) {
  * @param registry the target registry
  * @return the minimum required size for the registry (except for the ignored parts)
  */
-size_t t2_registry_size(Registry* registry) {
+size_t t2_minimum_registry_size(Registry* registry) {
     T2RegistryMetadata* registry_metadata = registry->registry_metadata;
     RegistryContent* registry_content = registry->registry_content;
 
@@ -133,7 +133,7 @@ size_t t2_write_registry(Registry* registry, FILE* dest) {
     RegistryContent* registry_content = registry->registry_content;
 
     // Update registry size
-    registry_metadata->tamanhoRegistro = max(registry_metadata->tamanhoRegistro, t2_registry_size(registry));
+    registry_metadata->tamanhoRegistro = max(registry_metadata->tamanhoRegistro, t2_minimum_registry_size(registry));
     size_t expected_size = registry_metadata->tamanhoRegistro + T2_IGNORED_SIZE;
 
     // Amount of bytes written
@@ -143,6 +143,10 @@ size_t t2_write_registry(Registry* registry, FILE* dest) {
     written_bytes += fwrite_member_field(registry_metadata, removido, dest);
     written_bytes += fwrite_member_field(registry_metadata, tamanhoRegistro, dest);
     written_bytes += fwrite_member_field(registry_metadata, prox, dest);
+
+    if (registry_metadata->removido == REMOVED) {
+        return written_bytes;
+    }
 
     // Write registry content
     written_bytes += write_registry_content(registry_content, dest);
@@ -179,19 +183,19 @@ size_t t2_read_registry(Registry* registry, FILE* src) {
     read_bytes += fread_member_field(registry_metadata, tamanhoRegistro, src);
     read_bytes += fread_member_field(registry_metadata, prox, src);
 
-   size_t expected_size = registry_metadata->tamanhoRegistro + T2_IGNORED_SIZE;
+    size_t expected_size = registry_metadata->tamanhoRegistro + T2_IGNORED_SIZE;
 
-   if (registry_metadata->removido == REMOVED) {
-       fseek(src, (long) (expected_size-read_bytes), SEEK_CUR);
-       return expected_size;
-   }
+    if (registry_metadata->removido == REMOVED) {
+        fseek(src, (long) (expected_size - read_bytes), SEEK_CUR);
+        return expected_size;
+    }
 
     // Read registry content
     read_bytes += read_registry_content(registry_content, src, (registry_metadata->tamanhoRegistro + T2_IGNORED_SIZE) - read_bytes);
 
     // Skip remaining bytes
     if (read_bytes < expected_size) {
-        fseek(src, (long) (expected_size-read_bytes), SEEK_CUR);
+        fseek(src, (long) (expected_size - read_bytes), SEEK_CUR);
     }
 
     // Check for over-reads
@@ -226,7 +230,7 @@ void t2_setup_registry_metadata(T2RegistryMetadata* registry_metadata) {
  * @return the allocated header metadata
  */
 T2HeaderMetadata* t2_new_header_metadata() {
-    T2HeaderMetadata* header_metadata = malloc(sizeof (struct T2HeaderMetadata));
+    T2HeaderMetadata* header_metadata = malloc(sizeof(struct T2HeaderMetadata));
     t2_setup_header_metadata(header_metadata);
     return header_metadata;
 }
@@ -236,7 +240,7 @@ T2HeaderMetadata* t2_new_header_metadata() {
  * @return the allocated registry metadata
  */
 T2RegistryMetadata* t2_new_registry_metadata() {
-    T2RegistryMetadata* registry_metadata = malloc(sizeof (struct T2RegistryMetadata));
+    T2RegistryMetadata* registry_metadata = malloc(sizeof(struct T2RegistryMetadata));
     t2_setup_registry_metadata(registry_metadata);
     return registry_metadata;
 }

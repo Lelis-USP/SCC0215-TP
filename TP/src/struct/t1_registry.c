@@ -97,6 +97,11 @@ size_t t1_write_registry(Registry* registry, FILE* dest) {
     written_bytes += fwrite_member_field(registry_metadata, removido, dest);
     written_bytes += fwrite_member_field(registry_metadata, prox, dest);
 
+    // Don't update other data if registry is removed
+    if (registry_metadata->removido == REMOVED) {
+        return written_bytes;
+    }
+
     // Write registry content
     written_bytes += write_registry_content(registry_content, dest);
 

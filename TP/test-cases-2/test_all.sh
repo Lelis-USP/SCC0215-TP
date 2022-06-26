@@ -26,8 +26,9 @@ if [ $build == 1 ]; then
   cd "$cur_dir" || exit
 fi
 
+./reset.sh
 
-for i in {1..4}
+for i in {1..8}
 do
   echo "Testing $i"
   $test_script "$i"

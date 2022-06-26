@@ -124,6 +124,8 @@ bool index_remove(IndexHeader* index_header, int32_t id) {
         index_header->index_pool[idx] = index_header->index_pool[last];
     }
 
+    index_header->sorted = false;
+
     return true;
 }
 

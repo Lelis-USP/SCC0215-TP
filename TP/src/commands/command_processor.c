@@ -40,6 +40,9 @@ void execute(FILE* data_in) {
         case BUILD_INDEX_FROM_REGISTRY:
             c_build_index_from_registry(args);
             break;
+        case REMOVE_REGISTRY:
+            c_remove_registry(args);
+            break;
     }
 
     destroy_command_args(args);
@@ -204,9 +207,8 @@ CommandArgs* read_command(FILE* source) {
                         unindexed_tail = new_filter;
                     }
                 }
-                break;
             }
-
+            break;
 
     }
 

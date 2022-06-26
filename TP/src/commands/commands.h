@@ -43,6 +43,8 @@ void c_deserialize_direct_access_rrn_and_print(CommandArgs* args);
  */
 void c_build_index_from_registry(CommandArgs* args);
 
+void c_remove_registry(CommandArgs* args);
+
 // Utilities //
 /**
  * Print a fixed length string
