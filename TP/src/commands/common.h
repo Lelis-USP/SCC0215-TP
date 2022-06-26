@@ -10,7 +10,7 @@
 
 // Consts //
 #define MIN_COMMAND 1
-#define MAX_COMMAND 6
+#define MAX_COMMAND 7
 
 enum Command {
     PARSE_AND_SERIALIZE = 1,
@@ -18,7 +18,8 @@ enum Command {
     DESERIALIZE_FILTER_AND_PRINT = 3,
     DESERIALIZE_SEARCH_RRN_AND_PRINT = 4,
     BUILD_INDEX_FROM_REGISTRY = 5,
-    REMOVE_REGISTRY = 6
+    REMOVE_REGISTRY = 6,
+    INSERT_REGISTRY = 7
 };
 
 // Field names for input parsing
@@ -61,6 +62,21 @@ typedef struct RemovalArgs {
     uint32_t n_removals;
     RemovalTarget* removal_targets;
 } RemovalArgs;
+
+typedef struct InsertionTarget {
+    int32_t id;
+    int32_t ano;
+    int32_t qtt;
+    char sigla[REGISTRY_SIGLA_SIZE];
+    char* cidade;
+    char* marca;
+    char* modelo;
+} InsertionTarget;
+
+typedef struct InsertionArgs {
+    uint32_t n_insertions;
+    InsertionTarget* insertion_targets;
+} InsertionArgs;
 
 /**
  * Create command args struct

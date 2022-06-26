@@ -512,6 +512,7 @@ void add_registry(Header* header, Registry* registry, FILE* file) {
 
     if (header->registry_type == VAR_LEN) {
         T2HeaderMetadata* header_metadata = header->header_metadata;
+        T2RegistryMetadata* registry_metadata = registry->registry_metadata;
 
         // Reset registry metadata
         t2_setup_registry_metadata(registry->registry_metadata);
@@ -534,6 +535,8 @@ void add_registry(Header* header, Registry* registry, FILE* file) {
                 header_metadata->nroRegRem--;
 
                 write_offset = front_registry->offset;
+                // Copy registry size
+                registry_metadata->tamanhoRegistro = front_registry_metadata->tamanhoRegistro;
             }
             destroy_registry(front_registry);
         }

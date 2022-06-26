@@ -68,6 +68,21 @@ void destroy_command_args(CommandArgs* args) {
             free(removal_args->removal_targets);
             free(removal_args);
         }
+
+        // Insertion cleanup
+        if (args->command == INSERT_REGISTRY) {
+            InsertionArgs* insertion_args = args->specific_data;
+
+            for (uint32_t i = 0; i < insertion_args->n_insertions; i++) {
+                InsertionTarget insertion_element = insertion_args->insertion_targets[i];
+                free(insertion_element.cidade);
+                free(insertion_element.marca);
+                free(insertion_element.modelo);
+            }
+
+            free(insertion_args->insertion_targets);
+            free(insertion_args);
+        }
     }
 
     free(args);

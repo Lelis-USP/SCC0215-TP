@@ -66,6 +66,10 @@ uint32_t reserve_pool_position(IndexHeader* index_header){
 
 // Index opertaions //
 uint32_t index_find(IndexHeader* index_header, int32_t id) {
+    if (index_header->pool_used == 0) {
+        return UINT32_MAX;
+    }
+
     // Guarantee index is sorted
     if (!index_header->sorted) {
         index_sort(index_header);
@@ -132,6 +136,12 @@ bool index_remove(IndexHeader* index_header, int32_t id) {
 bool index_add(IndexHeader* index_header, int32_t id, uint64_t reference) {
     ex_assert(index_header != NULL, EX_GENERIC_ERROR);
     ex_assert(index_header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
+
+    IndexElement* match = index_query(index_header, id);
+
+    if (match != NULL) {
+        return false;
+    }
 
     index_header->sorted = false;
 

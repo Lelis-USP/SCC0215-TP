@@ -519,6 +519,148 @@ void c_remove_registry(CommandArgs* args) {
     print_autocorrection_checksum(args->dest_file);
 }
 
+
+void c_insert_registry(CommandArgs* args) {
+    ex_assert(args->source_file != NULL, EX_COMMAND_PARSE_ERROR);
+    ex_assert(args->dest_file != NULL, EX_COMMAND_PARSE_ERROR);
+    ex_assert(args->specific_data != NULL, EX_COMMAND_PARSE_ERROR);
+
+    InsertionArgs* removal_args = args->specific_data;
+
+    // Open registry_file
+    FILE* registry_file = fopen(args->source_file, "rb+");
+    if (registry_file == NULL) {
+        puts(EX_FILE_ERROR);
+        return;
+    }
+
+    // Open index_file
+    FILE* index_file = fopen(args->dest_file, "rb+");
+    if (index_file == NULL) {
+        puts(EX_FILE_ERROR);
+        return;
+    }
+
+    // Allocate and read header
+    Header* header = build_header(args->registry_type);
+    size_t first_registry_offset = read_header(header, registry_file);
+
+    // Load index
+    IndexHeader* index_header = new_index(args->registry_type);
+    size_t read_bytes_index = read_index(index_header, index_file);
+
+    // Check for read failure or bad status
+    if (first_registry_offset == 0 || get_header_status(header) == STATUS_BAD || read_bytes_index == 0 || get_index_status(index_header) == STATUS_BAD) {
+        puts(EX_FILE_ERROR);
+        fclose(registry_file);
+        fclose(index_file);
+        destroy_header(header);
+        destroy_index_header(index_header);
+        return;
+    }
+
+    // Update registry header status
+    set_header_status(header, STATUS_BAD);
+    fseek(registry_file, 0, SEEK_SET);
+    write_header(header, registry_file);
+
+    // Update index header status
+    set_index_status(index_header, STATUS_BAD);
+    fseek(index_file, 0, SEEK_SET);
+    write_index_header(index_header, index_file);
+
+    Registry* registry = build_registry(header);
+
+    // Do each insertion in the given order
+    for (uint32_t i = 0; i < removal_args->n_insertions; i++) {
+        InsertionTarget current_insertion = removal_args->insertion_targets[i];
+
+        // Load target registry
+        setup_registry(registry);
+        registry->registry_content->id = current_insertion.id;
+        registry->registry_content->ano = current_insertion.ano;
+        registry->registry_content->qtt = current_insertion.qtt;
+
+        for (uint32_t j = 0; j < REGISTRY_SIGLA_SIZE; j++) {
+            registry->registry_content->sigla[j] = current_insertion.sigla[j];
+        }
+
+        if (current_insertion.cidade != NULL) {
+            // Len
+            size_t len_cidade = strlen(current_insertion.cidade);
+            registry->registry_content->tamCidade = len_cidade;
+            // Code
+            memcpy(registry->registry_content->codC5, header->header_content->codC5, CODE_FIELD_LEN * sizeof (char));
+            // Str Data
+            registry->registry_content->cidade = malloc((len_cidade + 1) * sizeof (char));
+            memcpy(registry->registry_content->cidade, current_insertion.cidade, len_cidade * sizeof (char));
+            registry->registry_content->cidade[len_cidade] = '\0';
+        }
+
+        if (current_insertion.marca != NULL) {
+            // Len
+            size_t len_marca = strlen(current_insertion.marca);
+            registry->registry_content->tamMarca = len_marca;
+            // Code
+            memcpy(registry->registry_content->codC6, header->header_content->codC6, CODE_FIELD_LEN * sizeof (char));
+            // Str Data
+            registry->registry_content->marca = malloc((len_marca + 1) * sizeof (char));
+            memcpy(registry->registry_content->marca, current_insertion.marca, len_marca * sizeof (char));
+            registry->registry_content->marca[len_marca] = '\0';
+        }
+
+        if (current_insertion.modelo != NULL) {
+            // Len
+            size_t len_modelo = strlen(current_insertion.modelo);
+            registry->registry_content->tamModelo = len_modelo;
+            // Code
+            memcpy(registry->registry_content->codC7, header->header_content->codC7, CODE_FIELD_LEN * sizeof (char));
+            // Str Data
+            registry->registry_content->modelo = malloc((len_modelo + 1) * sizeof (char));
+            memcpy(registry->registry_content->modelo, current_insertion.modelo, len_modelo * sizeof (char));
+            registry->registry_content->modelo[len_modelo] = '\0';
+        }
+
+        add_registry(header, registry, registry_file);
+        index_add(index_header, registry->registry_content->id, get_registry_reference(header, registry->offset));
+
+    }
+
+    // Cleanup
+    destroy_registry(registry);
+
+    // Update registry header
+    set_header_status(header, STATUS_GOOD);
+    fseek(registry_file, 0, SEEK_SET);
+    write_header(header, registry_file);
+
+    // Update the index
+    index_sort(index_header);
+
+    index_file = freopen(args->dest_file, "wb", index_file);
+    if (index_file == NULL) {
+        puts(EX_FILE_ERROR);
+        return;
+    }
+    fseek(index_file, 0, SEEK_SET);
+    write_index(index_header, index_file);
+
+
+    fseek(index_file, 0, SEEK_SET);
+    set_index_status(index_header, STATUS_GOOD);
+    write_index_header(index_header, index_file);
+
+    // Cleanup
+    destroy_header(header);
+    destroy_index_header(index_header);
+    fclose(registry_file);
+    fclose(index_file);
+
+    // Autocorrection stuff
+    print_autocorrection_checksum(args->source_file);
+    print_autocorrection_checksum(args->dest_file);
+}
+
 // Utils //
 
 /**

@@ -9,7 +9,9 @@
 
 #include "commands.h"
 #include "common.h"
+#include "../const/const.h"
 #include "../utils/provided_functions.h"
+#include "../utils/utils.h"
 #include "../exception/exception.h"
 
 
@@ -42,6 +44,9 @@ void execute(FILE* data_in) {
             break;
         case REMOVE_REGISTRY:
             c_remove_registry(args);
+            break;
+        case INSERT_REGISTRY:
+            c_insert_registry(args);
             break;
     }
 
@@ -209,6 +214,101 @@ CommandArgs* read_command(FILE* source) {
                 }
             }
             break;
+        case INSERT_REGISTRY:
+            // Load "output file" path
+            read_output_file_path(source, args);
+
+            // Allocate insertion args
+            InsertionArgs* insertion_args = malloc(sizeof (struct InsertionArgs));
+            args->specific_data = insertion_args;
+
+            // Read amount of insertions
+            fscanf(source, "%u", &insertion_args->n_insertions);
+
+            // Allocate insertion target's array
+            insertion_args->insertion_targets = calloc(insertion_args->n_insertions, sizeof (struct InsertionTarget));
+
+            for (uint32_t i = 0; i < insertion_args->n_insertions; i++) {
+                // ID
+                scan_quote_string(buffer);
+                size_t value_len = strnlen(buffer, 512);
+                if (value_len == 0) {
+                    insertion_args->insertion_targets[i].id = -1;
+                } else {
+                    insertion_args->insertion_targets[i].id = (int32_t) strtol(buffer, NULL, 10);
+                }
+
+
+                // Ano
+                scan_quote_string(buffer);
+                value_len = strnlen(buffer, 512);
+                if (value_len == 0) {
+                    insertion_args->insertion_targets[i].ano = -1;
+                } else {
+                    insertion_args->insertion_targets[i].ano = (int32_t) strtol(buffer, NULL, 10);
+                }
+
+                // Qtt
+                scan_quote_string(buffer);
+                value_len = strnlen(buffer, 512);
+                if (value_len == 0) {
+                    insertion_args->insertion_targets[i].qtt = -1;
+                } else {
+                    insertion_args->insertion_targets[i].qtt = (int32_t) strtol(buffer, NULL, 10);
+                }
+
+
+                // Sigla
+                scan_quote_string(buffer);
+                value_len = strnlen(buffer, 512);
+                if (value_len == 0) {
+                    // Load NULL sigla
+                    for (uint32_t j = 0; j < REGISTRY_SIGLA_SIZE; j++) {
+                        insertion_args->insertion_targets[i].sigla[j] = FILLER_BYTE[0];
+                    }
+                } else {
+                    // Load sigla
+                    memcpy(insertion_args->insertion_targets[i].sigla, buffer, min(REGISTRY_SIGLA_SIZE, value_len));
+
+                    // Fill remaining with NULLs
+                    for (size_t j = value_len; j < REGISTRY_SIGLA_SIZE; j++) {
+                        insertion_args->insertion_targets[i].sigla[j] = FILLER_BYTE[0];
+                    }
+                }
+
+                // Cidade
+                scan_quote_string(buffer);
+                value_len = strnlen(buffer, 512);
+                if (value_len == 0) {
+                    insertion_args->insertion_targets[i].cidade = NULL;
+                } else {
+                    insertion_args->insertion_targets[i].cidade = malloc((value_len + 1) * sizeof (char));
+                    memcpy(insertion_args->insertion_targets[i].cidade, buffer, value_len * sizeof (char));
+                    insertion_args->insertion_targets[i].cidade[value_len] = '\0';
+                }
+
+                // Marca
+                scan_quote_string(buffer);
+                value_len = strnlen(buffer, 512);
+                if (value_len == 0) {
+                    insertion_args->insertion_targets[i].marca = NULL;
+                } else {
+                    insertion_args->insertion_targets[i].marca = malloc((value_len + 1) * sizeof (char));
+                    memcpy(insertion_args->insertion_targets[i].marca, buffer, value_len * sizeof (char));
+                    insertion_args->insertion_targets[i].marca[value_len] = '\0';
+                }
+
+                // Modelo
+                scan_quote_string(buffer);
+                value_len = strnlen(buffer, 512);
+                if (value_len == 0) {
+                    insertion_args->insertion_targets[i].modelo = NULL;
+                } else {
+                    insertion_args->insertion_targets[i].modelo = malloc((value_len + 1) * sizeof (char));
+                    memcpy(insertion_args->insertion_targets[i].modelo, buffer, value_len * sizeof (char));
+                    insertion_args->insertion_targets[i].modelo[value_len] = '\0';
+                }
+            }
 
     }
 
