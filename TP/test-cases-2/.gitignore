@@ -1,0 +1,6 @@
+./binario1.bin
+./binario2.bin
+./binario3.bin
+./binario4.bin
+!/out/*.out
+tmp.txt

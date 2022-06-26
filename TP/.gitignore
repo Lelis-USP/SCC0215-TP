@@ -1,5 +1,5 @@
 test_zone
-!test-cases/*
+!test-cases-1/*
 src/main
 !src/Makefile
 build

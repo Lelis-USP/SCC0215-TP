@@ -183,3 +183,11 @@ size_t get_max_offset(Header* header);
  * @return if the seek was successful
  */
 bool seek_registry(Header* header, FILE* file, size_t target);
+
+/**
+ * Retrieves the registries relative position (RRN or byte offset, depending on registry type)
+ * @param header the registry header
+ * @param total_bytes_before_read the total amount of bytes read before the target element
+ * @return the registry's relative position
+ */
+size_t get_registry_reference(Header* header, size_t total_bytes_before_read);

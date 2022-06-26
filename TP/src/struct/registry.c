@@ -493,3 +493,21 @@ bool seek_registry(Header* header, FILE* file, size_t target) {
 
     return false;
 }
+
+/**
+ * Retrieves the registries relative position (RRN or byte offset, depending on registry type)
+ * @param header the registry header
+ * @param total_bytes_before_read the total amount of bytes read before the target element
+ * @return the registry's relative position
+ */
+size_t get_registry_reference(Header* header, size_t total_bytes_before_read) {
+    ex_assert(header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
+
+    if (header->registry_type == FIX_LEN) {
+        size_t registries_read = total_bytes_before_read - T1_HEADER_SIZE;
+        size_t rrn = registries_read / T1_REGISTRY_SIZE;
+        return rrn;
+    }
+
+    return total_bytes_before_read;
+}

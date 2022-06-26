@@ -37,6 +37,9 @@ void execute(FILE* data_in) {
         case DESERIALIZE_SEARCH_RRN_AND_PRINT:
             c_deserialize_direct_access_rrn_and_print(args);
             break;
+        case BUILD_INDEX_FROM_REGISTRY:
+            c_build_index_from_registry(args);
+            break;
     }
 
     destroy_command_args(args);
@@ -87,6 +90,7 @@ CommandArgs* read_command(FILE* source) {
     SearchByRRNArgs* rrn_args;
 
     switch (args->command) {
+        case BUILD_INDEX_FROM_REGISTRY:
         case PARSE_AND_SERIALIZE:
             // Read output file
             fscanf(source, "%511s", buffer);// Read up to buffer size or separator

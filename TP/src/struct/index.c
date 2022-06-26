@@ -168,7 +168,11 @@ void index_qsort(IndexElement arr[], uint32_t low, uint32_t high) {
     arr[partition_idx] = arr[high];
     arr[high] = tmp;
 
-    index_qsort(arr, low, partition_idx - 1);
+    // Prevent unsigned underflow
+    if (partition_idx != 0) {
+        index_qsort(arr, low, partition_idx - 1);
+    }
+
     index_qsort(arr, partition_idx + 1, high);
 }
 

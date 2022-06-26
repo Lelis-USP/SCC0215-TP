@@ -10,13 +10,14 @@
 
 // Consts //
 #define MIN_COMMAND 1
-#define MAX_COMMAND 4
+#define MAX_COMMAND 5
 
 enum Command {
     PARSE_AND_SERIALIZE = 1,
     DESERIALIZE_AND_PRINT = 2,
     DESERIALIZE_FILTER_AND_PRINT = 3,
-    DESERIALIZE_SEARCH_RRN_AND_PRINT = 4
+    DESERIALIZE_SEARCH_RRN_AND_PRINT = 4,
+    BUILD_INDEX_FROM_REGISTRY = 5
 };
 
 // Field names for input parsing

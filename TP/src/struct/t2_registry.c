@@ -134,6 +134,7 @@ size_t t2_write_registry(Registry* registry, FILE* dest) {
 
     // Update registry size
     registry_metadata->tamanhoRegistro = max(registry_metadata->tamanhoRegistro, t2_registry_size(registry));
+    size_t expected_size = registry_metadata->tamanhoRegistro + T2_IGNORED_SIZE;
 
     // Amount of bytes written
     size_t written_bytes = 0;
@@ -145,6 +146,11 @@ size_t t2_write_registry(Registry* registry, FILE* dest) {
 
     // Write registry content
     written_bytes += write_registry_content(registry_content, dest);
+
+    // Fill remaining bytes for reused registries
+    if (written_bytes < expected_size) {
+        written_bytes += fill_bytes(expected_size - written_bytes, dest);
+    }
 
     return written_bytes;
 }

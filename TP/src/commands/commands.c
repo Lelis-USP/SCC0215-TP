@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "../const/const.h"
+#include "../struct/index.h"
 #include "../exception/exception.h"
 #include "../utils/csv_parser.h"
 #include "../utils/provided_functions.h"
@@ -277,6 +278,85 @@ void c_deserialize_direct_access_rrn_and_print(CommandArgs* args) {
     destroy_registry(registry);
     destroy_header(header);
     fclose(file);
+}
+
+/**
+ * Build an index for the given registry
+ * @param args command args
+ */
+void c_build_index_from_registry(CommandArgs* args) {
+    ex_assert(args->source_file != NULL, EX_COMMAND_PARSE_ERROR);
+    ex_assert(args->dest_file != NULL, EX_COMMAND_PARSE_ERROR);
+
+    // Open registry_file
+    FILE* registry_file = fopen(args->source_file, "rb");
+    if (registry_file == NULL) {
+        puts(EX_FILE_ERROR);
+        return;
+    }
+
+    // Allocate and read header
+    Header* header = build_header(args->registry_type);
+    size_t read_bytes = read_header(header, registry_file);
+
+    // Create index header
+    IndexHeader* index_header = new_index(args->registry_type);
+    size_t written_bytes = 0;
+    set_index_status(index_header, STATUS_BAD);
+
+    // Check for read failure or bad status
+    if (read_bytes == 0 || get_header_status(header) == STATUS_BAD) {
+        puts(EX_FILE_ERROR);
+    } else {
+        // Allocate shared registry (freed only at the end, information is always reset on the read_registry call)
+        Registry* registry = build_registry(header);
+        size_t max_offset = get_max_offset(header);
+
+        // Loop each registry until reaching the file limit (defined on header)
+        while (read_bytes < max_offset) {
+            size_t registry_reference = get_registry_reference(header, read_bytes);
+            read_bytes += read_registry(registry, registry_file);
+
+            // On read failure or removal, skip
+            if (registry == NULL || is_registry_removed(registry)) {
+                continue;
+            }
+
+            index_add(index_header, registry->registry_content->id, registry_reference);
+        }
+
+        // Cleanup
+        destroy_registry(registry);
+    }
+
+    // Cleanup registry
+    destroy_header(header);
+    fclose(registry_file);
+
+    // Sort the index
+    index_sort(index_header);
+
+    // Open index_file
+    FILE* index_file = fopen(args->dest_file, "wb");
+    if (index_file == NULL) {
+        puts(EX_FILE_ERROR);
+        return;
+    }
+
+    // Write index
+    write_index(index_header, index_file);
+
+    // Update index status
+    fseek(index_file, 0, SEEK_SET);
+    set_index_status(index_header, STATUS_GOOD);
+    write_index_header(index_header, index_file);
+
+    // Cleanup
+    destroy_index_header(index_header);
+    fclose(index_file);
+
+    // Autocorrection stuff
+    print_autocorrection_checksum(args->dest_file);
 }
 
 
