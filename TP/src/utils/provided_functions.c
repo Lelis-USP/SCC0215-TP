@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "utils.h"
+
 // aka binarioNaTela
 void print_autocorrection_checksum(char *nomeArquivoBinario) { /* Você não precisa entender o código dessa função. */
 
@@ -64,11 +66,15 @@ void scan_quote_string(char *str) {
         getchar();      // ignorar o "ULO" de NULO.
         strcpy(str, "");// copia string vazia
     } else if (R == '\"') {
-        if (scanf("%511[^\"]", str) != 1) {// ler até o fechamento das aspas
+        char format[32];
+        sprintf(format, "%%%d[^\"]", COMMANDS_BUFFER_SIZE - 1);
+        if (scanf(format, str) != 1) {// ler até o fechamento das aspas
             strcpy(str, "");
         }
         getchar();        // ignorar aspas fechando
     } else if (R != EOF) {// vc tá tentando ler uma string que não tá entre aspas! Fazer leitura normal %s então, pois deve ser algum inteiro ou algo assim...
+        char format[32];
+        sprintf(format, "%%%ds", COMMANDS_BUFFER_SIZE - 2);
         str[0] = R;
         scanf("%510s", &str[1]);
     } else {// EOF

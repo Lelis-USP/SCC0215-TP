@@ -69,6 +69,13 @@ uint32_t reserve_pool_position(IndexHeader* index_header){
 }
 
 // Index opertaions //
+
+/**
+ * Search for a given ID in the index
+ * @param index_header target index header
+ * @param id target id
+ * @return the reference if found (return UINT32_MAX if not found)
+ */
 uint32_t index_find(IndexHeader* index_header, int32_t id) {
     if (index_header->pool_used == 0) {
         return UINT32_MAX;
@@ -106,6 +113,12 @@ uint32_t index_find(IndexHeader* index_header, int32_t id) {
     return UINT32_MAX;
 }
 
+/**
+ * Search for a given ID in the index
+ * @param index_header target index header
+ * @param id target id
+ * @return the index element if found (or else, NULL)
+ */
 IndexElement* index_query(IndexHeader* index_header, int32_t id) {
     uint32_t idx = index_find(index_header, id);
 
@@ -117,6 +130,12 @@ IndexElement* index_query(IndexHeader* index_header, int32_t id) {
     return &index_header->index_pool[idx];
 }
 
+/**
+ * Removes the given id from index
+ * @param index_header target index header
+ * @param id target id
+ * @return if the id was found and removed
+ */
 bool index_remove(IndexHeader* index_header, int32_t id) {
     uint32_t idx = index_find(index_header, id);
 
@@ -137,6 +156,13 @@ bool index_remove(IndexHeader* index_header, int32_t id) {
     return true;
 }
 
+/**
+ * Insert a new id into the index
+ * @param index_header target index header
+ * @param id target id
+ * @param reference id's reference (RRN or byte offset)
+ * @return if the id was inserted in the index (false indicates its already present)
+ */
 bool index_add(IndexHeader* index_header, int32_t id, uint64_t reference) {
     ex_assert(index_header != NULL, EX_GENERIC_ERROR);
     ex_assert(index_header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
@@ -156,6 +182,13 @@ bool index_add(IndexHeader* index_header, int32_t id, uint64_t reference) {
     return true;
 }
 
+/**
+ * Update and existing id's reference on the index
+ * @param index_header target index header
+ * @param id target id
+ * @param reference new id's reference
+ * @return if the index was updated (false indicates id was not found)
+ */
 bool index_update(IndexHeader* index_header, int32_t id, uint64_t reference) {
     ex_assert(index_header != NULL, EX_GENERIC_ERROR);
     ex_assert(index_header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
@@ -171,6 +204,14 @@ bool index_update(IndexHeader* index_header, int32_t id, uint64_t reference) {
     return true;
 }
 
+/**
+ * Quick sort recursive implementation to sort the index
+ *
+ * Uses random pivoting
+ * @param arr index element arr being sorted
+ * @param low current low-end (inclusive)
+ * @param high current high-end (inclusive)
+ */
 void index_qsort(IndexElement arr[], uint32_t low, uint32_t high) {
     if (low >= high) {
         return;
@@ -209,6 +250,10 @@ void index_qsort(IndexElement arr[], uint32_t low, uint32_t high) {
     index_qsort(arr, partition_idx + 1, high);
 }
 
+/**
+ * Sorts the index for further searches
+ * @param index_header target index header
+ */
 void index_sort(IndexHeader* index_header) {
     if (index_header->sorted) {
         return;
@@ -227,6 +272,10 @@ void index_sort(IndexHeader* index_header) {
 size_t write_index(IndexHeader* index_header, FILE* dest) {
     ex_assert(index_header != NULL, EX_GENERIC_ERROR);
     ex_assert(dest != NULL, EX_FILE_ERROR);
+
+    if (!index_header->sorted) {
+        index_sort(index_header);
+    }
 
     size_t written_bytes = 0;
 

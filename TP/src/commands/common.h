@@ -37,8 +37,8 @@ static const char MODELO_FIELD_NAME[] = "modelo";
 typedef struct CommandArgs {
     enum Command command;
     RegistryType registry_type;
-    char* source_file;
-    char* dest_file;
+    char* primary_file;
+    char* secondary_file;
     FILE* source;
     void* specific_data;
 } CommandArgs;

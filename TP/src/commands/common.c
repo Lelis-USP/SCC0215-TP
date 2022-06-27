@@ -15,8 +15,8 @@ CommandArgs* new_command_args(enum Command command) {
     CommandArgs* args = malloc(sizeof(struct CommandArgs));
 
     args->command = command;
-    args->source_file = NULL;
-    args->dest_file = NULL;
+    args->primary_file = NULL;
+    args->secondary_file = NULL;
     args->source = NULL;
     args->specific_data = NULL;
 
@@ -42,8 +42,8 @@ void destroy_filter_args(FilterArgs* filter_args) {
 void destroy_command_args(CommandArgs* args) {
     if (args == NULL) return;
 
-    free(args->source_file);
-    free(args->dest_file);
+    free(args->primary_file);
+    free(args->secondary_file);
 
     if (args->specific_data != NULL) {
         // RRN cleanup

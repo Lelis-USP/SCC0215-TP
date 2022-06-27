@@ -52,18 +52,18 @@ void parse_csv_line(int idx, CSVLine* line, void* passthrough) {
  * @param args command args
  */
 void c_parse_and_serialize(CommandArgs* args) {
-    ex_assert(args->source_file != NULL, EX_COMMAND_PARSE_ERROR);
-    ex_assert(args->dest_file != NULL, EX_COMMAND_PARSE_ERROR);
+    ex_assert(args->primary_file != NULL, EX_COMMAND_PARSE_ERROR);
+    ex_assert(args->secondary_file != NULL, EX_COMMAND_PARSE_ERROR);
 
     // Open CSV file
-    FILE* csv_file = fopen(args->source_file, "r");
+    FILE* csv_file = fopen(args->primary_file, "r");
     if (csv_file == NULL) {
         puts(EX_FILE_ERROR);
         return;
     }
 
     // Open destination file
-    FILE* dest_file = fopen(args->dest_file, "wb");
+    FILE* dest_file = fopen(args->secondary_file, "wb");
     if (dest_file == NULL) {
         puts(EX_FILE_ERROR);
         fclose(csv_file);
@@ -102,7 +102,7 @@ void c_parse_and_serialize(CommandArgs* args) {
     destroy_header(header);
 
     // Autocorrection stuff
-    print_autocorrection_checksum(args->dest_file);
+    print_autocorrection_checksum(args->secondary_file);
 }
 
 /**
@@ -110,10 +110,10 @@ void c_parse_and_serialize(CommandArgs* args) {
  * @param args command args
  */
 void c_deserialize_and_print(CommandArgs* args) {
-    ex_assert(args->source_file != NULL, EX_COMMAND_PARSE_ERROR);
+    ex_assert(args->primary_file != NULL, EX_COMMAND_PARSE_ERROR);
 
     // Open source file
-    FILE* file = fopen(args->source_file, "rb");
+    FILE* file = fopen(args->primary_file, "rb");
     if (file == NULL) {
         puts(EX_FILE_ERROR);
         return;
@@ -164,13 +164,13 @@ void c_deserialize_and_print(CommandArgs* args) {
  * @param args command args
  */
 void c_deserialize_filter_and_print(CommandArgs* args) {
-    ex_assert(args->source_file != NULL, EX_COMMAND_PARSE_ERROR);
+    ex_assert(args->primary_file != NULL, EX_COMMAND_PARSE_ERROR);
 
     // Extract filters from args (and type-cast it)
     FilterArgs* filters = args->specific_data;
 
     // Open source file
-    FILE* file = fopen(args->source_file, "rb");
+    FILE* file = fopen(args->primary_file, "rb");
     if (file == NULL) {
         puts(EX_FILE_ERROR);
         return;
@@ -221,7 +221,7 @@ void c_deserialize_filter_and_print(CommandArgs* args) {
  * @param args command args
  */
 void c_deserialize_direct_access_rrn_and_print(CommandArgs* args) {
-    ex_assert(args->source_file != NULL, EX_COMMAND_PARSE_ERROR);
+    ex_assert(args->primary_file != NULL, EX_COMMAND_PARSE_ERROR);
 
     // Check for registry type
     if (args->registry_type != FIX_LEN) {
@@ -233,7 +233,7 @@ void c_deserialize_direct_access_rrn_and_print(CommandArgs* args) {
     SearchByRRNArgs* rrn_args = args->specific_data;
 
     // Open source file
-    FILE* file = fopen(args->source_file, "rb");
+    FILE* file = fopen(args->primary_file, "rb");
     if (file == NULL) {
         puts(EX_FILE_ERROR);
         return;
@@ -283,11 +283,11 @@ void c_deserialize_direct_access_rrn_and_print(CommandArgs* args) {
  * @param args command args
  */
 void c_build_index_from_registry(CommandArgs* args) {
-    ex_assert(args->source_file != NULL, EX_COMMAND_PARSE_ERROR);
-    ex_assert(args->dest_file != NULL, EX_COMMAND_PARSE_ERROR);
+    ex_assert(args->primary_file != NULL, EX_COMMAND_PARSE_ERROR);
+    ex_assert(args->secondary_file != NULL, EX_COMMAND_PARSE_ERROR);
 
     // Open registry_file
-    FILE* registry_file = fopen(args->source_file, "rb");
+    FILE* registry_file = fopen(args->primary_file, "rb");
     if (registry_file == NULL) {
         puts(EX_FILE_ERROR);
         return;
@@ -299,7 +299,6 @@ void c_build_index_from_registry(CommandArgs* args) {
 
     // Create index header
     IndexHeader* index_header = new_index(args->registry_type);
-    size_t written_bytes = 0;
     set_index_status(index_header, STATUS_BAD);
 
     // Check for read failure or bad status
@@ -324,8 +323,10 @@ void c_build_index_from_registry(CommandArgs* args) {
                 continue;
             }
 
+            // Add registry to index
             bool success = index_add(index_header, registry->registry_content->id, registry_reference);
 
+            // If the registry already exists
             if (!success) {
                 puts(EX_FILE_ERROR);
                 destroy_header(header);
@@ -344,18 +345,15 @@ void c_build_index_from_registry(CommandArgs* args) {
     destroy_header(header);
     fclose(registry_file);
 
-    // Sort the index
-    index_sort(index_header);
-
     // Open index_file
-    FILE* index_file = fopen(args->dest_file, "wb");
+    FILE* index_file = fopen(args->secondary_file, "wb");
     if (index_file == NULL) {
         puts(EX_FILE_ERROR);
         return;
     }
 
     // Write index
-    written_bytes += write_index(index_header, index_file);
+    write_index(index_header, index_file);
 
     // Update index status
     fseek(index_file, 0, SEEK_SET);
@@ -367,25 +365,29 @@ void c_build_index_from_registry(CommandArgs* args) {
     fclose(index_file);
 
     // Autocorrection stuff
-    print_autocorrection_checksum(args->dest_file);
+    print_autocorrection_checksum(args->secondary_file);
 }
 
+/**
+ * Logically remove a registry and update the given index
+ * @param args command args
+ */
 void c_remove_registry(CommandArgs* args) {
-    ex_assert(args->source_file != NULL, EX_COMMAND_PARSE_ERROR);
-    ex_assert(args->dest_file != NULL, EX_COMMAND_PARSE_ERROR);
+    ex_assert(args->primary_file != NULL, EX_COMMAND_PARSE_ERROR);
+    ex_assert(args->secondary_file != NULL, EX_COMMAND_PARSE_ERROR);
     ex_assert(args->specific_data != NULL, EX_COMMAND_PARSE_ERROR);
 
     RemovalArgs* removal_args = args->specific_data;
 
     // Open registry_file
-    FILE* registry_file = fopen(args->source_file, "rb+");
+    FILE* registry_file = fopen(args->primary_file, "rb+");
     if (registry_file == NULL) {
         puts(EX_FILE_ERROR);
         return;
     }
 
     // Open index_file
-    FILE* index_file = fopen(args->dest_file, "rb+");
+    FILE* index_file = fopen(args->secondary_file, "rb+");
     if (index_file == NULL) {
         puts(EX_FILE_ERROR);
         return;
@@ -393,7 +395,7 @@ void c_remove_registry(CommandArgs* args) {
 
     // Allocate and read header
     Header* header = build_header(args->registry_type);
-    size_t first_registry_offset = read_header(header, registry_file);
+    size_t first_registry_offset = read_header(header, registry_file); // Store the offset of the first registry
 
     // Load index
     IndexHeader* index_header = new_index(args->registry_type);
@@ -424,16 +426,20 @@ void c_remove_registry(CommandArgs* args) {
         RemovalTarget current_removal = removal_args->removal_targets[i];
 
         if (current_removal.indexed_filter_args != NULL) {
-            // Handle indexed cases
+            // Indexed cases //
+
             FilterArgs* filter_args = current_removal.indexed_filter_args;
 
             ex_assert(strcmp(filter_args->key, ID_FIELD_NAME) == 0, EX_COMMAND_PARSE_ERROR);
             ex_assert(filter_args->next == NULL, EX_COMMAND_PARSE_ERROR);
 
+            // Retrieve filtered id
             int32_t id = parse_int32_filter(filter_args);
 
+            // Search for ID on index
             IndexElement* index_match = index_query(index_header, id);
 
+            // If not found, skip removal
             if (index_match == NULL) {
                 continue;
             }
@@ -443,31 +449,40 @@ void c_remove_registry(CommandArgs* args) {
             seek_registry(header, registry_file, index_match->reference);
             read_registry(registry, registry_file);
 
+            // Check if the registry exists and match the filters
             if (is_registry_removed(registry) || !registry_filter_match(registry, current_removal.unindexed_filter_args)) {
                 destroy_registry(registry);
                 continue;
             }
 
+            // Remove the registry and update the index
             remove_registry(header, registry, registry_file);
             index_remove(index_header, id);
 
+            // Clenaup
             destroy_registry(registry);
         } else {
-            // Non indexed cases
+            // Non-indexed cases //
+
             // Go to top of the registry for iteration
             go_to_offset(first_registry_offset, registry_file);
             size_t read_bytes_registry = first_registry_offset;
 
+            // Allocate registry for reading
             Registry* registry = build_registry(header);
+
+            // Compute the max offset for iteration
             size_t max_offset = get_max_offset(header);
 
+            // Load filterls
             FilterArgs* filter_args = current_removal.unindexed_filter_args;
 
-            // Loop each registry until reaching the file limit (defined on header)
+            // Loop each registry until reaching the file limit
             while (read_bytes_registry < max_offset) {
+                // Load the registry
                 read_bytes_registry += read_registry(registry, registry_file);
 
-                // On read failure, removal or no filter match, skip
+                // Check if registry is present and filter matches
                 if (registry == NULL || is_registry_removed(registry) || !registry_filter_match(registry, filter_args)) {
                     continue;
                 }
@@ -475,16 +490,15 @@ void c_remove_registry(CommandArgs* args) {
                 // Remove matched registry
                 size_t cur_offset = current_offset(registry_file); // Keep current offset to return to it in iteration
                 remove_registry(header, registry, registry_file);
-                index_remove(index_header, registry->registry_content->id);
                 go_to_offset(cur_offset, registry_file); // Return to offset to continue iteration
+
+                // Removed registry from index
+                index_remove(index_header, registry->registry_content->id);
             }
 
             // Cleanup
             destroy_registry(registry);
         }
-
-        // Keep index sorted for future searches
-        index_sort(index_header);
     }
 
     // Update registry header
@@ -495,15 +509,19 @@ void c_remove_registry(CommandArgs* args) {
     // Update the index
     index_sort(index_header);
 
-    index_file = freopen(args->dest_file, "wb", index_file);
+    // Reopen the index file to update it (reopen is neccessary since truncation isn't part of the C ANSI standard, although there are POSIX specific implementations)
+    index_file = freopen(args->secondary_file, "wb", index_file);
     if (index_file == NULL) {
         puts(EX_FILE_ERROR);
         return;
     }
+
+    // Write the updated index
     fseek(index_file, 0, SEEK_SET);
     write_index(index_header, index_file);
 
 
+    // Update index status
     fseek(index_file, 0, SEEK_SET);
     set_index_status(index_header, STATUS_GOOD);
     write_index_header(index_header, index_file);
@@ -515,27 +533,31 @@ void c_remove_registry(CommandArgs* args) {
     fclose(index_file);
 
     // Autocorrection stuff
-    print_autocorrection_checksum(args->source_file);
-    print_autocorrection_checksum(args->dest_file);
+    print_autocorrection_checksum(args->primary_file);
+    print_autocorrection_checksum(args->secondary_file);
 }
 
 
+/**
+ * Insert registries into an existing file and udpate index
+ * @param args command args
+ */
 void c_insert_registry(CommandArgs* args) {
-    ex_assert(args->source_file != NULL, EX_COMMAND_PARSE_ERROR);
-    ex_assert(args->dest_file != NULL, EX_COMMAND_PARSE_ERROR);
+    ex_assert(args->primary_file != NULL, EX_COMMAND_PARSE_ERROR);
+    ex_assert(args->secondary_file != NULL, EX_COMMAND_PARSE_ERROR);
     ex_assert(args->specific_data != NULL, EX_COMMAND_PARSE_ERROR);
 
     InsertionArgs* insertion_args = args->specific_data;
 
     // Open registry_file
-    FILE* registry_file = fopen(args->source_file, "rb+");
+    FILE* registry_file = fopen(args->primary_file, "rb+");
     if (registry_file == NULL) {
         puts(EX_FILE_ERROR);
         return;
     }
 
     // Open index_file
-    FILE* index_file = fopen(args->dest_file, "rb+");
+    FILE* index_file = fopen(args->secondary_file, "rb+");
     if (index_file == NULL) {
         puts(EX_FILE_ERROR);
         return;
@@ -575,7 +597,7 @@ void c_insert_registry(CommandArgs* args) {
     for (uint32_t i = 0; i < insertion_args->n_insertions; i++) {
         InsertionTarget current_insertion = insertion_args->insertion_targets[i];
 
-        // Load target registry
+        // Load registry with insertion data //
         setup_registry(registry);
         registry->registry_content->id = current_insertion.id;
         registry->registry_content->ano = current_insertion.ano;
@@ -621,9 +643,11 @@ void c_insert_registry(CommandArgs* args) {
             registry->registry_content->modelo[len_modelo] = '\0';
         }
 
-        add_registry(header, registry, registry_file);
-        index_add(index_header, registry->registry_content->id, get_registry_reference(header, registry->offset));
 
+        // Write the registry
+        add_registry(header, registry, registry_file);
+        // Update the index
+        index_add(index_header, registry->registry_content->id, get_registry_reference(header, registry->offset));
     }
 
     // Cleanup
@@ -637,15 +661,19 @@ void c_insert_registry(CommandArgs* args) {
     // Update the index
     index_sort(index_header);
 
-    index_file = freopen(args->dest_file, "wb", index_file);
+    // Reopen index file
+    index_file = freopen(args->secondary_file, "wb", index_file);
     if (index_file == NULL) {
         puts(EX_FILE_ERROR);
         return;
     }
+
+    // Write updated index
     fseek(index_file, 0, SEEK_SET);
     write_index(index_header, index_file);
 
 
+    // Update index status
     fseek(index_file, 0, SEEK_SET);
     set_index_status(index_header, STATUS_GOOD);
     write_index_header(index_header, index_file);
@@ -657,10 +685,17 @@ void c_insert_registry(CommandArgs* args) {
     fclose(index_file);
 
     // Autocorrection stuff
-    print_autocorrection_checksum(args->source_file);
-    print_autocorrection_checksum(args->dest_file);
+    print_autocorrection_checksum(args->primary_file);
+    print_autocorrection_checksum(args->secondary_file);
 }
 
+/**
+ * Apply updates to the target registry
+ * @param header the registry header
+ * @param registry the target registry
+ * @param update_target the update info
+ * @return if a re-index is necessary (index key change)
+ */
 bool apply_registry_updates(Header* header, Registry* registry, UpdateTarget update_target) {
     bool re_index = false;
 
@@ -746,22 +781,26 @@ bool apply_registry_updates(Header* header, Registry* registry, UpdateTarget upd
     return re_index;
 }
 
+/**
+ * Update the given registgries and their associated indexes
+ * @param args command args
+ */
 void c_update_registry(CommandArgs* args) {
-    ex_assert(args->source_file != NULL, EX_COMMAND_PARSE_ERROR);
-    ex_assert(args->dest_file != NULL, EX_COMMAND_PARSE_ERROR);
+    ex_assert(args->primary_file != NULL, EX_COMMAND_PARSE_ERROR);
+    ex_assert(args->secondary_file != NULL, EX_COMMAND_PARSE_ERROR);
     ex_assert(args->specific_data != NULL, EX_COMMAND_PARSE_ERROR);
 
     UpdateArgs* update_args = args->specific_data;
 
     // Open registry_file
-    FILE* registry_file = fopen(args->source_file, "rb+");
+    FILE* registry_file = fopen(args->primary_file, "rb+");
     if (registry_file == NULL) {
         puts(EX_FILE_ERROR);
         return;
     }
 
     // Open index_file
-    FILE* index_file = fopen(args->dest_file, "rb+");
+    FILE* index_file = fopen(args->secondary_file, "rb+");
     if (index_file == NULL) {
         puts(EX_FILE_ERROR);
         return;
@@ -795,24 +834,29 @@ void c_update_registry(CommandArgs* args) {
     fseek(index_file, 0, SEEK_SET);
     write_index_header(index_header, index_file);
 
+    // Allocate registry
     Registry* registry = build_registry(header);
 
     // Do each insertion in the given order
     for (uint32_t i = 0; i < update_args->n_updates; i++) {
         UpdateTarget current_update = update_args->update_targets[i];
 
-        // Find registry
+        // Search for the registries to update //
         if (current_update.indexed_filter_args != NULL) {
-            // Handle indexed cases
+            // Indexed cases //
+
             FilterArgs* filter_args = current_update.indexed_filter_args;
 
             ex_assert(strcmp(filter_args->key, ID_FIELD_NAME) == 0, EX_COMMAND_PARSE_ERROR);
             ex_assert(filter_args->next == NULL, EX_COMMAND_PARSE_ERROR);
 
+            // Target id
             int32_t id = parse_int32_filter(filter_args);
 
+            // Search for id on index
             IndexElement* index_match = index_query(index_header, id);
 
+            // If id not found, skip
             if (index_match == NULL) {
                 continue;
             }
@@ -821,32 +865,44 @@ void c_update_registry(CommandArgs* args) {
             seek_registry(header, registry_file, index_match->reference);
             read_registry(registry, registry_file);
 
+            // If registry is not present or filters don't match, skip
             if (is_registry_removed(registry) || !registry_filter_match(registry, current_update.unindexed_filter_args)) {
                 continue;
             }
 
-            // Do update
+            // Apply update //
+
+            // Keep track of old id, in case of an update
             int32_t old_id = registry->registry_content->id;
             bool reindex = apply_registry_updates(header, registry, current_update);
+
+            // Updates the registry
             bool rereference = update_registry(header, registry, registry_file);
 
+            // Updates the index
             if (reindex) {
+                // ID changed, so we need to remove the old one from the index and insert a new one
                 index_remove(index_header, old_id);
                 index_add(index_header, registry->registry_content->id, get_registry_reference(header, registry->offset));
             } else if (rereference) {
+                // ID is the same, but the offset changed, so we need to update the index reference
                 index_update(index_header, registry->registry_content->id, get_registry_reference(header, registry->offset));
             }
         } else {
-            // Non indexed cases
+            // Non-indexed cases //
+
             // Go to top of the registry for iteration
             go_to_offset(first_registry_offset, registry_file);
             size_t read_bytes_registry = first_registry_offset;
+            // Max iteration offset
             size_t max_offset = get_max_offset(header);
 
+            // Filters
             FilterArgs* filter_args = current_update.unindexed_filter_args;
 
-            // Loop each registry until reaching the file limit (defined on header)
+            // Loop each registry until reaching the file limit
             while (read_bytes_registry < max_offset) {
+                // Read the current registry
                 read_bytes_registry += read_registry(registry, registry_file);
 
                 // On read failure, removal or no filter match, skip
@@ -855,12 +911,21 @@ void c_update_registry(CommandArgs* args) {
                 }
 
                 // Do update
+
+                // Store current offset for later recovery
                 size_t cur_offset = current_offset(registry_file);
+
+                // Keep old id in case of change
                 int32_t old_id = registry->registry_content->id;
                 bool reindex = apply_registry_updates(header, registry, current_update);
+
+                // Update the registry
                 bool rereference = update_registry(header, registry, registry_file);
+
+                // Recover to iteration position
                 go_to_offset(cur_offset, registry_file);
 
+                // Update the index
                 if (reindex) {
                     index_remove(index_header, old_id);
                     index_add(index_header, registry->registry_content->id, get_registry_reference(header, registry->offset));
@@ -882,15 +947,18 @@ void c_update_registry(CommandArgs* args) {
     // Update the index
     index_sort(index_header);
 
-    index_file = freopen(args->dest_file, "wb", index_file);
+    // Reopen the index
+    index_file = freopen(args->secondary_file, "wb", index_file);
     if (index_file == NULL) {
         puts(EX_FILE_ERROR);
         return;
     }
+
+    // Write the updated index
     fseek(index_file, 0, SEEK_SET);
     write_index(index_header, index_file);
 
-
+    // Update index status
     fseek(index_file, 0, SEEK_SET);
     set_index_status(index_header, STATUS_GOOD);
     write_index_header(index_header, index_file);
@@ -902,8 +970,8 @@ void c_update_registry(CommandArgs* args) {
     fclose(index_file);
 
     // Autocorrection stuff
-    print_autocorrection_checksum(args->source_file);
-    print_autocorrection_checksum(args->dest_file);
+    print_autocorrection_checksum(args->primary_file);
+    print_autocorrection_checksum(args->secondary_file);
 }
 
 // Utils //

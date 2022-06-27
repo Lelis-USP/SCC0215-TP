@@ -32,10 +32,45 @@ void destroy_index_header(IndexHeader* index_header);
 IndexHeader* new_index(RegistryType registry_type);
 
 // Index opertaions //
+
+/**
+ * Search for a given ID in the index
+ * @param index_header target index header
+ * @param id target id
+ * @return the index element if found (or else, NULL)
+ */
 IndexElement* index_query(IndexHeader* index_header, int32_t id);
+
+/**
+ * Removes the given id from index
+ * @param index_header target index header
+ * @param id target id
+ * @return if the id was found and removed
+ */
 bool index_remove(IndexHeader* index_header, int32_t id);
+
+/**
+ * Insert a new id into the index
+ * @param index_header target index header
+ * @param id target id
+ * @param reference id's reference (RRN or byte offset)
+ * @return if the id was inserted in the index (false indicates its already present)
+ */
 bool index_add(IndexHeader* index_header, int32_t id, uint64_t reference);
+
+/**
+ * Update and existing id's reference on the index
+ * @param index_header target index header
+ * @param id target id
+ * @param reference new id's reference
+ * @return if the index was updated (false indicates id was not found)
+ */
 bool index_update(IndexHeader* index_header, int32_t id, uint64_t reference);
+
+/**
+ * Sorts the index for further searches
+ * @param index_header target index header
+ */
 void index_sort(IndexHeader* index_header);
 
 // File I/O //

@@ -19,3 +19,14 @@
  * @return the smallest of a and b
  */
 #define min(a, b) ((a) < (b) ? (a) : (b))
+
+
+// Buffer size used for strings
+#define COMMANDS_BUFFER_SIZE 512
+#define COMMANDS_BUFFER_FORMAT "%511s"
+
+static inline void read_buffer_string(FILE* source, char* buffer) {
+    char format[32];
+    sprintf(format, "%%%ds", COMMANDS_BUFFER_SIZE - 1);
+    fscanf(source, format, buffer);
+}

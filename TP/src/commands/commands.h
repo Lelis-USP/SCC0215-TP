@@ -43,10 +43,22 @@ void c_deserialize_direct_access_rrn_and_print(CommandArgs* args);
  */
 void c_build_index_from_registry(CommandArgs* args);
 
+/**
+ * Logically remove a registry and update the given index
+ * @param args command args
+ */
 void c_remove_registry(CommandArgs* args);
 
+/**
+ * Insert registries into an existing file and udpate index
+ * @param args command args
+ */
 void c_insert_registry(CommandArgs* args);
 
+/**
+ * Update the given registgries and their associated indexes
+ * @param args command args
+ */
 void c_update_registry(CommandArgs* args);
 
 // Utilities //

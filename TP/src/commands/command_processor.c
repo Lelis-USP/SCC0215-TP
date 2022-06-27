@@ -14,6 +14,7 @@
 #include "../utils/utils.h"
 #include "../exception/exception.h"
 
+//#define COMMANDS_BUFFER_SIZE 512
 
 /**
  * Read and execute the command in the given file
@@ -56,33 +57,116 @@ void execute(FILE* data_in) {
     destroy_command_args(args);
 }
 
-void read_output_file_path(FILE* source, CommandArgs* args) {
-    char buffer[512];
-    fscanf(source, "%511s", buffer);// Read up to buffer size or separator
-    size_t dest_path_len = strnlen(buffer, 512);
-    args->dest_file = calloc(dest_path_len + 1, sizeof(char));
-    memcpy(args->dest_file, buffer, dest_path_len);
+// Reading Utilities //
+
+/**
+ * Read a 32-bit integer
+ * @param source source file
+ * @return the read integer
+ */
+int32_t read_integer_field(FILE* source) {
+    char buffer[COMMANDS_BUFFER_SIZE];
+    scan_quote_string(buffer);
+    size_t value_len = strnlen(buffer, COMMANDS_BUFFER_SIZE);
+
+    if (value_len == 0) {
+        return -1;
+    }
+
+    return (int32_t) strtol(buffer, NULL, 10);
 }
 
+/**
+ * Read a string field (possibly quoted, or NULL)
+ * @param source source file
+ * @return read string
+ */
+char* read_string_field(FILE* source) {
+    char buffer[COMMANDS_BUFFER_SIZE];
+    scan_quote_string(buffer);
+    size_t value_len = strnlen(buffer, COMMANDS_BUFFER_SIZE);
+    if (value_len == 0) {
+        return NULL;
+    }
+
+    char* str = malloc((value_len + 1) * sizeof (char));
+    memcpy(str, buffer, value_len * sizeof (char));
+    str[value_len] = '\0';
+    return str;
+}
+
+/**
+ * Read a raw string (unquoted)
+ * @param source source file
+ * @return read string
+ */
+char* read_string_raw(FILE* source) {
+    char buffer[COMMANDS_BUFFER_SIZE];
+    read_buffer_string(source, buffer);
+    size_t field_len = strnlen(buffer, COMMANDS_BUFFER_SIZE);
+    char* str = malloc(field_len + 1 * sizeof(char));
+    memcpy(str, buffer, field_len);
+    str[field_len] = '\0';
+    return str;
+}
+
+/**
+ * Read a sigla field
+ * @param source source file
+ * @param sigla destination ptr
+ */
+void read_sigla_field(FILE* source, char* sigla) {
+    char buffer[COMMANDS_BUFFER_SIZE];
+    scan_quote_string(buffer);
+    size_t value_len = strnlen(buffer, COMMANDS_BUFFER_SIZE);
+    if (value_len == 0) {
+        // Load NULL sigla
+        for (uint32_t i = 0; i < REGISTRY_SIGLA_SIZE; i++) {
+            sigla[i] = FILLER_BYTE[0];
+        }
+        return;
+    }
+
+    // Load sigla
+    memcpy(sigla, buffer, min(REGISTRY_SIGLA_SIZE, value_len));
+
+    // Fill remainings with NULLs
+    for (size_t j = value_len; j < REGISTRY_SIGLA_SIZE; j++) {
+        sigla[j] = FILLER_BYTE[0];
+    }
+}
+
+/**
+ * Read the path for the secondary file
+ * @param source source file
+ * @param args command args ptr
+ */
+void read_secondary_file_path(FILE* source, CommandArgs* args) {
+    args->secondary_file = read_string_raw(source) ;
+}
+
+// Read and parse commands //
 /**
  * Read command information from the given file
  * @param source command source
  * @return command information
  */
 CommandArgs* read_command(FILE* source) {
-    // Retrieve command
+    // Reading buffer //
+    char buffer[COMMANDS_BUFFER_SIZE];
+
+    // Retrieve command id //
     uint32_t command;
     fscanf(source, "%u", &command);
 
-    // Validate command
+    // Validate command //
     ex_assert(command >= MIN_COMMAND && command <= MAX_COMMAND, EX_COMMAND_PARSE_ERROR);
 
-    // Create base args
+    // Create base args //
     CommandArgs* args = new_command_args(command);
 
-    // Read file type
-    char buffer[512];               // Static buffer, should be enough for most cases
-    fscanf(source, "%511s", buffer);// Read up to buffer size or separator
+    // Read file type //
+    read_buffer_string(source, buffer);
 
     // Check if a valid file type was inserted
     args->registry_type = UNKNOWN;
@@ -92,65 +176,64 @@ CommandArgs* read_command(FILE* source) {
         args->registry_type = VAR_LEN;
     }
 
+    // Invalid registry type
     if (args->registry_type == UNKNOWN) {
         puts(EX_COMMAND_PARSE_ERROR);
         destroy_command_args(args);
         return NULL;
     }
 
-    // Read input file path
-    fscanf(source, "%511s", buffer);// Read up to buffer size or separator
-    size_t path_len = strnlen(buffer, 512);
-    args->source_file = calloc(path_len + 1, sizeof(char));
-    memcpy(args->source_file, buffer, path_len);
+    // Read primary file path //
+    read_buffer_string(source, buffer);
+    size_t path_len = strnlen(buffer, COMMANDS_BUFFER_SIZE);
+    args->primary_file = calloc(path_len + 1, sizeof(char));
+    memcpy(args->primary_file, buffer, path_len);
 
-    // Handle command-specific params
-    uint32_t n_filters;
-    SearchByRRNArgs* rrn_args;
+    // Handle command-specific params //
 
     switch (args->command) {
         case BUILD_INDEX_FROM_REGISTRY:
         case PARSE_AND_SERIALIZE:
-            read_output_file_path(source, args);
+            read_secondary_file_path(source, args);
             break;
 
         case DESERIALIZE_AND_PRINT:
             break;
 
         case DESERIALIZE_FILTER_AND_PRINT:
+            ; // This is not a typo
+            // Read number of filters to read
+            uint32_t n_filters;
             fscanf(source, "%u", &n_filters);
 
             // Build filter list
-            FilterArgs* tail = NULL;
+            FilterArgs* filter_tail = NULL;
+
             for (uint32_t i = 0; i < n_filters; i++) {
                 FilterArgs* new_filter = malloc(sizeof(struct FilterArgs));
                 new_filter->next = NULL;
                 new_filter->parsed_value = NULL;
 
-                // Read field name
-                fscanf(source, "%511s", buffer);
-                size_t field_len = strnlen(buffer, 512);
-                new_filter->key = calloc(field_len + 1, sizeof(char));
-                memcpy(new_filter->key, buffer, field_len);
+                // Field name
+                new_filter->key = read_string_raw(source);
+                // Field value
+                new_filter->value = read_string_field(source);
 
-                // Read value
-                scan_quote_string(buffer);
-                size_t value_len = strnlen(buffer, 512);
-                new_filter->value = calloc(value_len + 1, sizeof(char));
-                memcpy(new_filter->value, buffer, value_len);
-
-                // Update list tail ref
-                if (tail == NULL) {
+                // Update list filter_tail ref
+                if (filter_tail == NULL) {
                     args->specific_data = new_filter;
                 } else {
-                    tail->next = new_filter;
+                    filter_tail->next = new_filter;
                 }
 
-                tail = new_filter;
+                // Update tail ref
+                filter_tail = new_filter;
             }
             break;
 
         case DESERIALIZE_SEARCH_RRN_AND_PRINT:
+            ; // This is not a typo
+            SearchByRRNArgs* rrn_args;
             // Read RRN value
             rrn_args = malloc(sizeof(struct SearchByRRNArgs));
             rrn_args->rrn = 0;
@@ -159,8 +242,8 @@ CommandArgs* read_command(FILE* source) {
             break;
 
         case REMOVE_REGISTRY:
-            // Load "output file" path
-            read_output_file_path(source, args);
+            // Load secondary file path
+            read_secondary_file_path(source, args);
             RemovalArgs* removal_args = malloc(sizeof (struct RemovalArgs));
             args->specific_data = removal_args;
 
@@ -170,56 +253,54 @@ CommandArgs* read_command(FILE* source) {
             // Allocate removal targets
             removal_args->removal_targets = calloc(removal_args->n_removals, sizeof (struct RemovalTarget));
 
+            // Read every removal filter
             for (uint32_t i = 0; i < removal_args->n_removals; i++) {
+                // Number of filtered fields
                 uint32_t n_fields;
                 fscanf(source, "%u", &n_fields);
 
+                // Tail refs
                 FilterArgs* indexed_tail = NULL;
                 FilterArgs* unindexed_tail = NULL;
 
+                // Read each field
                 for (uint32_t j = 0; j < n_fields; j++) {
                     FilterArgs* new_filter = malloc(sizeof(struct FilterArgs));
                     new_filter->next = NULL;
                     new_filter->parsed_value = NULL;
 
                     // Read field name
-                    fscanf(source, "%511s", buffer);
-                    size_t field_len = strnlen(buffer, 512);
-                    new_filter->key = calloc(field_len + 1, sizeof(char));
-                    memcpy(new_filter->key, buffer, field_len);
-
-                    // Read value
-                    scan_quote_string(buffer);
-                    size_t value_len = strnlen(buffer, 512);
-                    new_filter->value = calloc(value_len + 1, sizeof(char));
-                    memcpy(new_filter->value, buffer, value_len);
+                    new_filter->key = read_string_raw(source);
+                    // Read field value
+                    new_filter->value = read_string_field(source);
 
                     // Check if field is indexed
-                    if (strncmp(ID_FIELD_NAME, new_filter->key, 512) == 0) {
-                        // Update list tail ref
+                    if (strcmp(ID_FIELD_NAME, new_filter->key) == 0) {
+                        // Update list filter_tail ref
                         if (indexed_tail == NULL) {
                             removal_args->removal_targets[i].indexed_filter_args = new_filter;
                         } else {
                             unindexed_tail->next = new_filter;
                         }
-
+                        // Update tail ref
                         indexed_tail = new_filter;
                     } else {
-                        // Update list tail ref
+                        // Update list filter_tail ref
                         if (unindexed_tail == NULL) {
                             removal_args->removal_targets[i].unindexed_filter_args = new_filter;
                         } else {
                             unindexed_tail->next = new_filter;
                         }
-
+                        // Update tail ref
                         unindexed_tail = new_filter;
                     }
                 }
             }
             break;
+
         case INSERT_REGISTRY:
-            // Load "output file" path
-            read_output_file_path(source, args);
+            // Load secondary file path
+            read_secondary_file_path(source, args);
 
             // Allocate insertion args
             InsertionArgs* insertion_args = malloc(sizeof (struct InsertionArgs));
@@ -233,89 +314,25 @@ CommandArgs* read_command(FILE* source) {
 
             for (uint32_t i = 0; i < insertion_args->n_insertions; i++) {
                 // ID
-                scan_quote_string(buffer);
-                size_t value_len = strnlen(buffer, 512);
-                if (value_len == 0) {
-                    insertion_args->insertion_targets[i].id = -1;
-                } else {
-                    insertion_args->insertion_targets[i].id = (int32_t) strtol(buffer, NULL, 10);
-                }
-
-
+                insertion_args->insertion_targets[i].id = read_integer_field(source);
                 // Ano
-                scan_quote_string(buffer);
-                value_len = strnlen(buffer, 512);
-                if (value_len == 0) {
-                    insertion_args->insertion_targets[i].ano = -1;
-                } else {
-                    insertion_args->insertion_targets[i].ano = (int32_t) strtol(buffer, NULL, 10);
-                }
-
+                insertion_args->insertion_targets[i].ano = read_integer_field(source);
                 // Qtt
-                scan_quote_string(buffer);
-                value_len = strnlen(buffer, 512);
-                if (value_len == 0) {
-                    insertion_args->insertion_targets[i].qtt = -1;
-                } else {
-                    insertion_args->insertion_targets[i].qtt = (int32_t) strtol(buffer, NULL, 10);
-                }
-
-
+                insertion_args->insertion_targets[i].qtt = read_integer_field(source);
                 // Sigla
-                scan_quote_string(buffer);
-                value_len = strnlen(buffer, 512);
-                if (value_len == 0) {
-                    // Load NULL sigla
-                    for (uint32_t j = 0; j < REGISTRY_SIGLA_SIZE; j++) {
-                        insertion_args->insertion_targets[i].sigla[j] = FILLER_BYTE[0];
-                    }
-                } else {
-                    // Load sigla
-                    memcpy(insertion_args->insertion_targets[i].sigla, buffer, min(REGISTRY_SIGLA_SIZE, value_len));
-
-                    // Fill remaining with NULLs
-                    for (size_t j = value_len; j < REGISTRY_SIGLA_SIZE; j++) {
-                        insertion_args->insertion_targets[i].sigla[j] = FILLER_BYTE[0];
-                    }
-                }
-
+                read_sigla_field(source, insertion_args->insertion_targets[i].sigla);
                 // Cidade
-                scan_quote_string(buffer);
-                value_len = strnlen(buffer, 512);
-                if (value_len == 0) {
-                    insertion_args->insertion_targets[i].cidade = NULL;
-                } else {
-                    insertion_args->insertion_targets[i].cidade = malloc((value_len + 1) * sizeof (char));
-                    memcpy(insertion_args->insertion_targets[i].cidade, buffer, value_len * sizeof (char));
-                    insertion_args->insertion_targets[i].cidade[value_len] = '\0';
-                }
-
+                insertion_args->insertion_targets[i].cidade = read_string_field(source);
                 // Marca
-                scan_quote_string(buffer);
-                value_len = strnlen(buffer, 512);
-                if (value_len == 0) {
-                    insertion_args->insertion_targets[i].marca = NULL;
-                } else {
-                    insertion_args->insertion_targets[i].marca = malloc((value_len + 1) * sizeof (char));
-                    memcpy(insertion_args->insertion_targets[i].marca, buffer, value_len * sizeof (char));
-                    insertion_args->insertion_targets[i].marca[value_len] = '\0';
-                }
-
+                insertion_args->insertion_targets[i].marca= read_string_field(source);
                 // Modelo
-                scan_quote_string(buffer);
-                value_len = strnlen(buffer, 512);
-                if (value_len == 0) {
-                    insertion_args->insertion_targets[i].modelo = NULL;
-                } else {
-                    insertion_args->insertion_targets[i].modelo = malloc((value_len + 1) * sizeof (char));
-                    memcpy(insertion_args->insertion_targets[i].modelo, buffer, value_len * sizeof (char));
-                    insertion_args->insertion_targets[i].modelo[value_len] = '\0';
-                }
+                insertion_args->insertion_targets[i].modelo= read_string_field(source);
             }
             break;
+
         case UPDATE_REGISTRY:
-            // Load "output file" path
-            read_output_file_path(source, args);
+            // Load secondary file path
+            read_secondary_file_path(source, args);
 
             // Allocate insertion args
             UpdateArgs* update_args = malloc(sizeof (struct UpdateArgs));
@@ -327,8 +344,9 @@ CommandArgs* read_command(FILE* source) {
             // Allocate insertion target's array
             update_args->update_targets= calloc(update_args->n_updates, sizeof (struct UpdateTarget));
 
+            // Load each update
             for (uint32_t i = 0; i < update_args->n_updates; i++) {
-                // Load filters
+                // Load update filters //
                 uint32_t n_fields;
                 fscanf(source, "%u", &n_fields);
 
@@ -341,132 +359,60 @@ CommandArgs* read_command(FILE* source) {
                     new_filter->parsed_value = NULL;
 
                     // Read field name
-                    fscanf(source, "%511s", buffer);
-                    size_t field_len = strnlen(buffer, 512);
-                    new_filter->key = calloc(field_len + 1, sizeof(char));
-                    memcpy(new_filter->key, buffer, field_len);
-
-                    // Read value
-                    scan_quote_string(buffer);
-                    size_t value_len = strnlen(buffer, 512);
-                    new_filter->value = calloc(value_len + 1, sizeof(char));
-                    memcpy(new_filter->value, buffer, value_len);
+                    new_filter->key = read_string_raw(source);
+                    // Read field value
+                    new_filter->value = read_string_field(source);
 
                     // Check if field is indexed
-                    if (strncmp(ID_FIELD_NAME, new_filter->key, 512) == 0) {
-                        // Update list tail ref
+                    if (strcmp(ID_FIELD_NAME, new_filter->key) == 0) {
+                        // Update list filter_tail ref
                         if (indexed_tail == NULL) {
                             update_args->update_targets[i].indexed_filter_args = new_filter;
                         } else {
                             unindexed_tail->next = new_filter;
                         }
-
+                        // Update tail ref
                         indexed_tail = new_filter;
                     } else {
-                        // Update list tail ref
+                        // Update list filter_tail ref
                         if (unindexed_tail == NULL) {
                             update_args->update_targets[i].unindexed_filter_args = new_filter;
                         } else {
                             unindexed_tail->next = new_filter;
                         }
-
+                        // Update tail ref
                         unindexed_tail = new_filter;
                     }
                 }
 
-                // Load fields
-                update_args->update_targets[i].update_id = false;
-                update_args->update_targets[i].update_ano = false;
-                update_args->update_targets[i].update_qtt = false;
-                update_args->update_targets[i].update_sigla = false;
-                update_args->update_targets[i].update_cidade = false;
-                update_args->update_targets[i].update_marca = false;
-                update_args->update_targets[i].update_modelo = false;
-
+                // Load fields //
                 fscanf(source, "%u", &n_fields);
 
                 for (uint32_t j = 0; j < n_fields; j++) {
                     // Read field name
-                    fscanf(source, "%511s", buffer);
+                    read_buffer_string(source, buffer);
 
                     if (strcmp(buffer, ID_FIELD_NAME) == 0) {
-                        scan_quote_string(buffer);
-                        size_t value_len = strnlen(buffer, 512);
+                        update_args->update_targets[i].id = read_integer_field(source);
                         update_args->update_targets[i].update_id = true;
-                        if (value_len == 0) {
-                            update_args->update_targets[i].id = -1;
-                        } else {
-                            update_args->update_targets[i].id = (int32_t) strtol(buffer, NULL, 10);
-                        }
                     } else if (strcmp(buffer, ANO_FIELD_NAME) == 0) {
-                        scan_quote_string(buffer);
-                        size_t value_len = strnlen(buffer, 512);
+                        update_args->update_targets[i].ano = read_integer_field(source);
                         update_args->update_targets[i].update_ano = true;
-                        if (value_len == 0) {
-                            update_args->update_targets[i].ano = -1;
-                        } else {
-                            update_args->update_targets[i].ano = (int32_t) strtol(buffer, NULL, 10);
-                        }
                     } else if (strcmp(buffer, QTT_FIELD_NAME) == 0) {
-                        scan_quote_string(buffer);
-                        size_t value_len = strnlen(buffer, 512);
+                        update_args->update_targets[i].qtt = read_integer_field(source);
                         update_args->update_targets[i].update_qtt = true;
-                        if (value_len == 0) {
-                            update_args->update_targets[i].qtt = -1;
-                        } else {
-                            update_args->update_targets[i].qtt = (int32_t) strtol(buffer, NULL, 10);
-                        }
                     } else if (strcmp(buffer, SIGLA_FIELD_NAME) == 0) {
-                        scan_quote_string(buffer);
-                        size_t value_len = strnlen(buffer, 512);
+                        read_sigla_field(source, update_args->update_targets[i].sigla);
                         update_args->update_targets[i].update_sigla = true;
-                        if (value_len == 0) {
-                            // Load NULL sigla
-                            for (uint32_t k = 0; k < REGISTRY_SIGLA_SIZE; k++) {
-                                update_args->update_targets[i].sigla[k] = FILLER_BYTE[0];
-                            }
-                        } else {
-                            // Load sigla
-                            memcpy(update_args->update_targets[i].sigla, buffer, min(REGISTRY_SIGLA_SIZE, value_len));
-
-                            // Fill remaining with NULLs
-                            for (size_t k = value_len; k < REGISTRY_SIGLA_SIZE; k++) {
-                                update_args->update_targets[i].sigla[k] = FILLER_BYTE[0];
-                            }
-                        }
                     } else if (strcmp(buffer, CIDADE_FIELD_NAME) == 0) {
-                        scan_quote_string(buffer);
-                        size_t value_len = strnlen(buffer, 512);
+                        update_args->update_targets[i].cidade = read_string_field(source);
                         update_args->update_targets[i].update_cidade = true;
-                        if (value_len == 0) {
-                            update_args->update_targets[i].cidade = NULL;
-                        } else {
-                            update_args->update_targets[i].cidade = malloc((value_len + 1) * sizeof (char));
-                            memcpy(update_args->update_targets[i].cidade, buffer, value_len * sizeof (char));
-                            update_args->update_targets[i].cidade[value_len] = '\0';
-                        }
                     } else if (strcmp(buffer, MARCA_FIELD_NAME) == 0) {
-                        scan_quote_string(buffer);
-                        size_t value_len = strnlen(buffer, 512);
+                        update_args->update_targets[i].marca = read_string_field(source);
                         update_args->update_targets[i].update_marca = true;
-                        if (value_len == 0) {
-                            update_args->update_targets[i].marca = NULL;
-                        } else {
-                            update_args->update_targets[i].marca = malloc((value_len + 1) * sizeof (char));
-                            memcpy(update_args->update_targets[i].marca, buffer, value_len * sizeof (char));
-                            update_args->update_targets[i].marca[value_len] = '\0';
-                        }
                     } else if (strcmp(buffer, MODELO_FIELD_NAME) == 0) {
-                        scan_quote_string(buffer);
-                        size_t value_len = strnlen(buffer, 512);
-                        update_args->update_targets[i].update_modelo = true;
-                        if (value_len == 0) {
-                            update_args->update_targets[i].modelo = NULL;
-                        } else {
-                            update_args->update_targets[i].modelo = malloc((value_len + 1) * sizeof (char));
-                            memcpy(update_args->update_targets[i].modelo, buffer, value_len * sizeof (char));
-                            update_args->update_targets[i].modelo[value_len] = '\0';
-                        }
+                        update_args->update_targets[i].modelo= read_string_field(source);
+                        update_args->update_targets[i].update_modelo= true;
                     }
                 }
             }
