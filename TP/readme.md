@@ -26,3 +26,4 @@ to-do
 - [ ] Re-do a general improvements round
 - [ ] Improve TP2 features docs
 - [ ] Remove extra index sort on removal 
+- [ ] Improve registry update

@@ -133,7 +133,10 @@ size_t t2_write_registry(Registry* registry, FILE* dest) {
     RegistryContent* registry_content = registry->registry_content;
 
     // Update registry size
-    registry_metadata->tamanhoRegistro = max(registry_metadata->tamanhoRegistro, t2_minimum_registry_size(registry));
+    if (registry_metadata->removido == NOT_REMOVED) {
+        registry_metadata->tamanhoRegistro = max(registry_metadata->tamanhoRegistro, t2_minimum_registry_size(registry));
+    }
+
     size_t expected_size = registry_metadata->tamanhoRegistro + T2_IGNORED_SIZE;
 
     // Amount of bytes written

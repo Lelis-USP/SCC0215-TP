@@ -525,7 +525,7 @@ void c_insert_registry(CommandArgs* args) {
     ex_assert(args->dest_file != NULL, EX_COMMAND_PARSE_ERROR);
     ex_assert(args->specific_data != NULL, EX_COMMAND_PARSE_ERROR);
 
-    InsertionArgs* removal_args = args->specific_data;
+    InsertionArgs* insertion_args = args->specific_data;
 
     // Open registry_file
     FILE* registry_file = fopen(args->source_file, "rb+");
@@ -572,8 +572,8 @@ void c_insert_registry(CommandArgs* args) {
     Registry* registry = build_registry(header);
 
     // Do each insertion in the given order
-    for (uint32_t i = 0; i < removal_args->n_insertions; i++) {
-        InsertionTarget current_insertion = removal_args->insertion_targets[i];
+    for (uint32_t i = 0; i < insertion_args->n_insertions; i++) {
+        InsertionTarget current_insertion = insertion_args->insertion_targets[i];
 
         // Load target registry
         setup_registry(registry);
@@ -624,6 +624,251 @@ void c_insert_registry(CommandArgs* args) {
         add_registry(header, registry, registry_file);
         index_add(index_header, registry->registry_content->id, get_registry_reference(header, registry->offset));
 
+    }
+
+    // Cleanup
+    destroy_registry(registry);
+
+    // Update registry header
+    set_header_status(header, STATUS_GOOD);
+    fseek(registry_file, 0, SEEK_SET);
+    write_header(header, registry_file);
+
+    // Update the index
+    index_sort(index_header);
+
+    index_file = freopen(args->dest_file, "wb", index_file);
+    if (index_file == NULL) {
+        puts(EX_FILE_ERROR);
+        return;
+    }
+    fseek(index_file, 0, SEEK_SET);
+    write_index(index_header, index_file);
+
+
+    fseek(index_file, 0, SEEK_SET);
+    set_index_status(index_header, STATUS_GOOD);
+    write_index_header(index_header, index_file);
+
+    // Cleanup
+    destroy_header(header);
+    destroy_index_header(index_header);
+    fclose(registry_file);
+    fclose(index_file);
+
+    // Autocorrection stuff
+    print_autocorrection_checksum(args->source_file);
+    print_autocorrection_checksum(args->dest_file);
+}
+
+bool apply_registry_updates(Header* header, Registry* registry, UpdateTarget update_target) {
+    bool re_index = false;
+
+    if (update_target.update_id) {
+        registry->registry_content->id = update_target.id;
+        re_index = true;
+    }
+
+    if (update_target.update_ano) {
+        registry->registry_content->ano = update_target.ano;
+    }
+
+    if (update_target.update_qtt) {
+        registry->registry_content->qtt = update_target.qtt;
+    }
+
+    if (update_target.update_sigla) {
+        for (uint32_t j = 0; j < REGISTRY_SIGLA_SIZE; j++) {
+            registry->registry_content->sigla[j] = update_target.sigla[j];
+        }
+    }
+
+    if (update_target.update_cidade) {
+        free(registry->registry_content->cidade);
+        if (update_target.cidade != NULL) {
+            // Len
+            size_t len_cidade = strlen(update_target.cidade);
+            registry->registry_content->tamCidade = len_cidade;
+            // Code
+            memcpy(registry->registry_content->codC5, header->header_content->codC5, CODE_FIELD_LEN * sizeof (char));
+            // Str Data
+            registry->registry_content->cidade = malloc((len_cidade + 1) * sizeof (char));
+            memcpy(registry->registry_content->cidade, update_target.cidade, len_cidade * sizeof (char));
+            registry->registry_content->cidade[len_cidade] = '\0';
+        } else {
+            if (registry->registry_content->cidade != NULL) {
+                registry->registry_content->tamCidade = 0;
+                registry->registry_content->cidade = NULL;
+            }
+        }
+    }
+
+    if (update_target.update_marca) {
+        free(registry->registry_content->marca);
+        if (update_target.marca != NULL) {
+            // Len
+            size_t len_marca = strlen(update_target.marca);
+            registry->registry_content->tamMarca = len_marca;
+            // Code
+            memcpy(registry->registry_content->codC6, header->header_content->codC6, CODE_FIELD_LEN * sizeof (char));
+            // Str Data
+            registry->registry_content->marca = malloc((len_marca + 1) * sizeof (char));
+            memcpy(registry->registry_content->marca, update_target.marca, len_marca * sizeof (char));
+            registry->registry_content->marca[len_marca] = '\0';
+        } else {
+            if (registry->registry_content->marca != NULL) {
+                registry->registry_content->tamMarca = 0;
+                registry->registry_content->marca = NULL;
+            }
+        }
+    }
+
+    if (update_target.update_modelo) {
+        free(registry->registry_content->modelo);
+        if (update_target.modelo != NULL) {
+            // Len
+            size_t len_modelo = strlen(update_target.modelo);
+            registry->registry_content->tamModelo = len_modelo;
+            // Code
+            memcpy(registry->registry_content->codC7, header->header_content->codC7, CODE_FIELD_LEN * sizeof (char));
+            // Str Data
+            registry->registry_content->modelo = malloc((len_modelo + 1) * sizeof (char));
+            memcpy(registry->registry_content->modelo, update_target.modelo, len_modelo * sizeof (char));
+            registry->registry_content->modelo[len_modelo] = '\0';
+        } else {
+            if (registry->registry_content->modelo!= NULL) {
+                registry->registry_content->tamModelo = 0;
+                registry->registry_content->modelo = NULL;
+            }
+        }
+    }
+
+    return re_index;
+}
+
+void c_update_registry(CommandArgs* args) {
+    ex_assert(args->source_file != NULL, EX_COMMAND_PARSE_ERROR);
+    ex_assert(args->dest_file != NULL, EX_COMMAND_PARSE_ERROR);
+    ex_assert(args->specific_data != NULL, EX_COMMAND_PARSE_ERROR);
+
+    UpdateArgs* update_args = args->specific_data;
+
+    // Open registry_file
+    FILE* registry_file = fopen(args->source_file, "rb+");
+    if (registry_file == NULL) {
+        puts(EX_FILE_ERROR);
+        return;
+    }
+
+    // Open index_file
+    FILE* index_file = fopen(args->dest_file, "rb+");
+    if (index_file == NULL) {
+        puts(EX_FILE_ERROR);
+        return;
+    }
+
+    // Allocate and read header
+    Header* header = build_header(args->registry_type);
+    size_t first_registry_offset = read_header(header, registry_file);
+
+    // Load index
+    IndexHeader* index_header = new_index(args->registry_type);
+    size_t read_bytes_index = read_index(index_header, index_file);
+
+    // Check for read failure or bad status
+    if (first_registry_offset == 0 || get_header_status(header) == STATUS_BAD || read_bytes_index == 0 || get_index_status(index_header) == STATUS_BAD) {
+        puts(EX_FILE_ERROR);
+        fclose(registry_file);
+        fclose(index_file);
+        destroy_header(header);
+        destroy_index_header(index_header);
+        return;
+    }
+
+    // Update registry header status
+    set_header_status(header, STATUS_BAD);
+    fseek(registry_file, 0, SEEK_SET);
+    write_header(header, registry_file);
+
+    // Update index header status
+    set_index_status(index_header, STATUS_BAD);
+    fseek(index_file, 0, SEEK_SET);
+    write_index_header(index_header, index_file);
+
+    Registry* registry = build_registry(header);
+
+    // Do each insertion in the given order
+    for (uint32_t i = 0; i < update_args->n_updates; i++) {
+        UpdateTarget current_update = update_args->update_targets[i];
+
+        // Find registry
+        if (current_update.indexed_filter_args != NULL) {
+            // Handle indexed cases
+            FilterArgs* filter_args = current_update.indexed_filter_args;
+
+            ex_assert(strcmp(filter_args->key, ID_FIELD_NAME) == 0, EX_COMMAND_PARSE_ERROR);
+            ex_assert(filter_args->next == NULL, EX_COMMAND_PARSE_ERROR);
+
+            int32_t id = parse_int32_filter(filter_args);
+
+            IndexElement* index_match = index_query(index_header, id);
+
+            if (index_match == NULL) {
+                continue;
+            }
+
+            // Load target registry
+            seek_registry(header, registry_file, index_match->reference);
+            read_registry(registry, registry_file);
+
+            if (is_registry_removed(registry) || !registry_filter_match(registry, current_update.unindexed_filter_args)) {
+                continue;
+            }
+
+            // Do update
+            int32_t old_id = registry->registry_content->id;
+            bool reindex = apply_registry_updates(header, registry, current_update);
+            bool rereference = update_registry(header, registry, registry_file);
+
+            if (reindex) {
+                index_remove(index_header, old_id);
+                index_add(index_header, registry->registry_content->id, get_registry_reference(header, registry->offset));
+            } else if (rereference) {
+                index_update(index_header, registry->registry_content->id, get_registry_reference(header, registry->offset));
+            }
+        } else {
+            // Non indexed cases
+            // Go to top of the registry for iteration
+            go_to_offset(first_registry_offset, registry_file);
+            size_t read_bytes_registry = first_registry_offset;
+            size_t max_offset = get_max_offset(header);
+
+            FilterArgs* filter_args = current_update.unindexed_filter_args;
+
+            // Loop each registry until reaching the file limit (defined on header)
+            while (read_bytes_registry < max_offset) {
+                read_bytes_registry += read_registry(registry, registry_file);
+
+                // On read failure, removal or no filter match, skip
+                if (registry == NULL || is_registry_removed(registry) || !registry_filter_match(registry, filter_args)) {
+                    continue;
+                }
+
+                // Do update
+                size_t cur_offset = current_offset(registry_file);
+                int32_t old_id = registry->registry_content->id;
+                bool reindex = apply_registry_updates(header, registry, current_update);
+                bool rereference = update_registry(header, registry, registry_file);
+                go_to_offset(cur_offset, registry_file);
+
+                if (reindex) {
+                    index_remove(index_header, old_id);
+                    index_add(index_header, registry->registry_content->id, get_registry_reference(header, registry->offset));
+                } else if (rereference) {
+                    index_update(index_header, registry->registry_content->id, get_registry_reference(header, registry->offset));
+                }
+            }
+        }
     }
 
     // Cleanup

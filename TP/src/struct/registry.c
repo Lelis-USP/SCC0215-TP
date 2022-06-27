@@ -471,7 +471,6 @@ void remove_registry(Header* header, Registry* registry, FILE* file) {
 
 void add_registry(Header* header, Registry* registry, FILE* file) {
     ex_assert(header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
-    ex_assert(registry->offset != SIZE_MAX, EX_CORRUPTED_REGISTRY);
     ex_assert(file != NULL, EX_FILE_ERROR);
 
     if (header->registry_type == FIX_LEN) {
@@ -530,7 +529,7 @@ void add_registry(Header* header, Registry* registry, FILE* file) {
             ex_assert(front_registry_metadata->removido == REMOVED, EX_FILE_ERROR);
 
             // Check if registry fits
-            if (front_registry_metadata->tamanhoRegistro >= total_registry_size(registry)) {
+            if (front_registry_metadata->tamanhoRegistro + T2_IGNORED_SIZE >= total_registry_size(registry)) {
                 header_metadata->topo = front_registry_metadata->prox;
                 header_metadata->nroRegRem--;
 
@@ -548,6 +547,39 @@ void add_registry(Header* header, Registry* registry, FILE* file) {
         // Update header's proxByteOffset reference, if needed
         header_metadata->proxByteOffset = (int64_t) max(header_metadata->proxByteOffset, current_offset(file));
     }
+}
+
+bool update_registry(Header* header, Registry* registry, FILE* file) {
+    ex_assert(header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
+    ex_assert(registry->offset != SIZE_MAX, EX_CORRUPTED_REGISTRY);
+    ex_assert(file != NULL, EX_FILE_ERROR);
+
+    // Fixed Len always can overwrite
+    if (header->registry_type == FIX_LEN) {
+        // Go to the beginning of the target registry
+        go_to_registry(registry, file);
+        write_registry(registry, file);
+        return false;
+    }
+
+    if (header->registry_type == VAR_LEN) {
+        T2RegistryMetadata* registry_metadata = registry->registry_metadata;
+
+        size_t new_size = total_registry_size(registry);
+
+        // Can overwrite
+        if (new_size <= T2_IGNORED_SIZE + registry_metadata->tamanhoRegistro) {
+            go_to_registry(registry, file);
+            write_registry(registry, file);
+            return false;
+        } else {
+            remove_registry(header, registry, file);
+            add_registry(header, registry, file);
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void go_to_registry(Registry* registry, FILE* file) {

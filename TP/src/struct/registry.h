@@ -144,6 +144,7 @@ size_t total_registry_size(Registry* registry);
 
 void remove_registry(Header* header, Registry* registry, FILE* file);
 void add_registry(Header* header, Registry* registry, FILE* file);
+bool update_registry(Header* header, Registry* registry, FILE* file);
 
 void go_to_registry(Registry* registry, FILE* file);
 void go_to_offset(size_t offset, FILE* file);

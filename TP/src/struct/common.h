@@ -27,6 +27,9 @@
 #define REMOVED '1'
 #define NOT_REMOVED '0'
 
+// Static bytes for var_len field
+#define STATIC_VAR_LEN_SIZE 6
+
 // Reference to filler byte
 static const char FILLER_BYTE[1] = {'$'};
 

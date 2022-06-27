@@ -31,6 +31,7 @@ IndexHeader* new_index(RegistryType registry_type);
 IndexElement* index_query(IndexHeader* index_header, int32_t id);
 bool index_remove(IndexHeader* index_header, int32_t id);
 bool index_add(IndexHeader* index_header, int32_t id, uint64_t reference);
+bool index_update(IndexHeader* index_header, int32_t id, uint64_t reference);
 void index_sort(IndexHeader* index_header);
 
 // File I/O //

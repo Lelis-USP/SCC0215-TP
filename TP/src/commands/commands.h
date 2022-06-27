@@ -47,6 +47,8 @@ void c_remove_registry(CommandArgs* args);
 
 void c_insert_registry(CommandArgs* args);
 
+void c_update_registry(CommandArgs* args);
+
 // Utilities //
 /**
  * Print a fixed length string

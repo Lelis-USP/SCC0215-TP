@@ -112,7 +112,7 @@ size_t read_registry_content(RegistryContent* registry_content, FILE* src, size_
     read_bytes += fread_member_field(registry_content, sigla, src);
 
     // Read variable length fields
-    for (uint8_t i = 0; i < 3 && read_bytes < max_read_bytes; i++) {
+    for (uint8_t i = 0; i < 3 && read_bytes + STATIC_VAR_LEN_SIZE < max_read_bytes; i++) {
         VarLenStrField var_len_field = fread_var_len_str(src);
         read_bytes += var_len_field.read_bytes;
 

@@ -76,12 +76,12 @@ uint32_t index_find(IndexHeader* index_header, int32_t id) {
     }
 
     // Binary search the id
-    uint32_t low, high;
+    int64_t low, high;
     low = 0;
     high = index_header->pool_used - 1;
 
     while (low <= high) {
-        uint32_t mid = (high + low) / 2;
+        int64_t mid = (high + low) / 2;
 
         if (index_header->index_pool[mid].id == id) {
             low = high = mid;
@@ -148,6 +148,21 @@ bool index_add(IndexHeader* index_header, int32_t id, uint64_t reference) {
     uint32_t insertion_pos = reserve_pool_position(index_header);
     index_header->index_pool[insertion_pos].id = id;
     index_header->index_pool[insertion_pos].reference = reference;
+
+    return true;
+}
+
+bool index_update(IndexHeader* index_header, int32_t id, uint64_t reference) {
+    ex_assert(index_header != NULL, EX_GENERIC_ERROR);
+    ex_assert(index_header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
+
+    IndexElement* match = index_query(index_header, id);
+
+    if (match == NULL) {
+        return false;
+    }
+
+    match->reference = reference;
 
     return true;
 }

@@ -48,6 +48,9 @@ void execute(FILE* data_in) {
         case INSERT_REGISTRY:
             c_insert_registry(args);
             break;
+        case UPDATE_REGISTRY:
+            c_update_registry(args);
+            break;
     }
 
     destroy_command_args(args);
@@ -309,7 +312,165 @@ CommandArgs* read_command(FILE* source) {
                     insertion_args->insertion_targets[i].modelo[value_len] = '\0';
                 }
             }
+            break;
+        case UPDATE_REGISTRY:
+            // Load "output file" path
+            read_output_file_path(source, args);
 
+            // Allocate insertion args
+            UpdateArgs* update_args = malloc(sizeof (struct UpdateArgs));
+            args->specific_data = update_args;
+
+            // Read amount of insertions
+            fscanf(source, "%u", &update_args->n_updates);
+
+            // Allocate insertion target's array
+            update_args->update_targets= calloc(update_args->n_updates, sizeof (struct UpdateTarget));
+
+            for (uint32_t i = 0; i < update_args->n_updates; i++) {
+                // Load filters
+                uint32_t n_fields;
+                fscanf(source, "%u", &n_fields);
+
+                FilterArgs* indexed_tail = NULL;
+                FilterArgs* unindexed_tail = NULL;
+
+                for (uint32_t j = 0; j < n_fields; j++) {
+                    FilterArgs* new_filter = malloc(sizeof(struct FilterArgs));
+                    new_filter->next = NULL;
+                    new_filter->parsed_value = NULL;
+
+                    // Read field name
+                    fscanf(source, "%511s", buffer);
+                    size_t field_len = strnlen(buffer, 512);
+                    new_filter->key = calloc(field_len + 1, sizeof(char));
+                    memcpy(new_filter->key, buffer, field_len);
+
+                    // Read value
+                    scan_quote_string(buffer);
+                    size_t value_len = strnlen(buffer, 512);
+                    new_filter->value = calloc(value_len + 1, sizeof(char));
+                    memcpy(new_filter->value, buffer, value_len);
+
+                    // Check if field is indexed
+                    if (strncmp(ID_FIELD_NAME, new_filter->key, 512) == 0) {
+                        // Update list tail ref
+                        if (indexed_tail == NULL) {
+                            update_args->update_targets[i].indexed_filter_args = new_filter;
+                        } else {
+                            unindexed_tail->next = new_filter;
+                        }
+
+                        indexed_tail = new_filter;
+                    } else {
+                        // Update list tail ref
+                        if (unindexed_tail == NULL) {
+                            update_args->update_targets[i].unindexed_filter_args = new_filter;
+                        } else {
+                            unindexed_tail->next = new_filter;
+                        }
+
+                        unindexed_tail = new_filter;
+                    }
+                }
+
+                // Load fields
+                update_args->update_targets[i].update_id = false;
+                update_args->update_targets[i].update_ano = false;
+                update_args->update_targets[i].update_qtt = false;
+                update_args->update_targets[i].update_sigla = false;
+                update_args->update_targets[i].update_cidade = false;
+                update_args->update_targets[i].update_marca = false;
+                update_args->update_targets[i].update_modelo = false;
+
+                fscanf(source, "%u", &n_fields);
+
+                for (uint32_t j = 0; j < n_fields; j++) {
+                    // Read field name
+                    fscanf(source, "%511s", buffer);
+
+                    if (strcmp(buffer, ID_FIELD_NAME) == 0) {
+                        scan_quote_string(buffer);
+                        size_t value_len = strnlen(buffer, 512);
+                        update_args->update_targets[i].update_id = true;
+                        if (value_len == 0) {
+                            update_args->update_targets[i].id = -1;
+                        } else {
+                            update_args->update_targets[i].id = (int32_t) strtol(buffer, NULL, 10);
+                        }
+                    } else if (strcmp(buffer, ANO_FIELD_NAME) == 0) {
+                        scan_quote_string(buffer);
+                        size_t value_len = strnlen(buffer, 512);
+                        update_args->update_targets[i].update_ano = true;
+                        if (value_len == 0) {
+                            update_args->update_targets[i].ano = -1;
+                        } else {
+                            update_args->update_targets[i].ano = (int32_t) strtol(buffer, NULL, 10);
+                        }
+                    } else if (strcmp(buffer, QTT_FIELD_NAME) == 0) {
+                        scan_quote_string(buffer);
+                        size_t value_len = strnlen(buffer, 512);
+                        update_args->update_targets[i].update_qtt = true;
+                        if (value_len == 0) {
+                            update_args->update_targets[i].qtt = -1;
+                        } else {
+                            update_args->update_targets[i].qtt = (int32_t) strtol(buffer, NULL, 10);
+                        }
+                    } else if (strcmp(buffer, SIGLA_FIELD_NAME) == 0) {
+                        scan_quote_string(buffer);
+                        size_t value_len = strnlen(buffer, 512);
+                        update_args->update_targets[i].update_sigla = true;
+                        if (value_len == 0) {
+                            // Load NULL sigla
+                            for (uint32_t k = 0; k < REGISTRY_SIGLA_SIZE; k++) {
+                                update_args->update_targets[i].sigla[k] = FILLER_BYTE[0];
+                            }
+                        } else {
+                            // Load sigla
+                            memcpy(update_args->update_targets[i].sigla, buffer, min(REGISTRY_SIGLA_SIZE, value_len));
+
+                            // Fill remaining with NULLs
+                            for (size_t k = value_len; k < REGISTRY_SIGLA_SIZE; k++) {
+                                update_args->update_targets[i].sigla[k] = FILLER_BYTE[0];
+                            }
+                        }
+                    } else if (strcmp(buffer, CIDADE_FIELD_NAME) == 0) {
+                        scan_quote_string(buffer);
+                        size_t value_len = strnlen(buffer, 512);
+                        update_args->update_targets[i].update_cidade = true;
+                        if (value_len == 0) {
+                            update_args->update_targets[i].cidade = NULL;
+                        } else {
+                            update_args->update_targets[i].cidade = malloc((value_len + 1) * sizeof (char));
+                            memcpy(update_args->update_targets[i].cidade, buffer, value_len * sizeof (char));
+                            update_args->update_targets[i].cidade[value_len] = '\0';
+                        }
+                    } else if (strcmp(buffer, MARCA_FIELD_NAME) == 0) {
+                        scan_quote_string(buffer);
+                        size_t value_len = strnlen(buffer, 512);
+                        update_args->update_targets[i].update_marca = true;
+                        if (value_len == 0) {
+                            update_args->update_targets[i].marca = NULL;
+                        } else {
+                            update_args->update_targets[i].marca = malloc((value_len + 1) * sizeof (char));
+                            memcpy(update_args->update_targets[i].marca, buffer, value_len * sizeof (char));
+                            update_args->update_targets[i].marca[value_len] = '\0';
+                        }
+                    } else if (strcmp(buffer, MODELO_FIELD_NAME) == 0) {
+                        scan_quote_string(buffer);
+                        size_t value_len = strnlen(buffer, 512);
+                        update_args->update_targets[i].update_modelo = true;
+                        if (value_len == 0) {
+                            update_args->update_targets[i].modelo = NULL;
+                        } else {
+                            update_args->update_targets[i].modelo = malloc((value_len + 1) * sizeof (char));
+                            memcpy(update_args->update_targets[i].modelo, buffer, value_len * sizeof (char));
+                            update_args->update_targets[i].modelo[value_len] = '\0';
+                        }
+                    }
+                }
+            }
+            break;
     }
 
     return args;

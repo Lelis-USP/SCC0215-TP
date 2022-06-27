@@ -83,6 +83,23 @@ void destroy_command_args(CommandArgs* args) {
             free(insertion_args->insertion_targets);
             free(insertion_args);
         }
+
+        // Update cleanup
+        if (args->command == UPDATE_REGISTRY) {
+            UpdateArgs* update_args = args->specific_data;
+
+            for (uint32_t i = 0; i < update_args->n_updates; i++) {
+                UpdateTarget update_target = update_args->update_targets[i];
+                destroy_filter_args(update_target.indexed_filter_args);
+                destroy_filter_args(update_target.unindexed_filter_args);
+                free(update_target.cidade);
+                free(update_target.marca);
+                free(update_target.modelo);
+            }
+
+            free(update_args->update_targets);
+            free(update_args);
+        }
     }
 
     free(args);
