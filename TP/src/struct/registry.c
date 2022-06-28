@@ -360,6 +360,13 @@ size_t read_registry(Registry* registry, FILE* src) {
     return read_bytes;
 }
 
+/**
+ * Calculates the total registry size (actual number of bytes on the file).
+ *
+ * Includes ghost bytes, from re-using previously removed registries
+ * @param registry target registry
+ * @return the amount of bytes used by the registry
+ */
 size_t total_registry_size(Registry* registry) {
     ex_assert(registry->registry_type != UNKNOWN, EX_GENERIC_ERROR);
 
@@ -376,6 +383,12 @@ size_t total_registry_size(Registry* registry) {
     return 0;
 }
 
+/**
+ * Remove registry from file, updating the removal list and making any required updates
+ * @param header target file header
+ * @param registry target registry to remove (must've been read from the file)
+ * @param file target file
+ */
 void remove_registry(Header* header, Registry* registry, FILE* file) {
     ex_assert(registry->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
     ex_assert(registry->offset != SIZE_MAX, EX_CORRUPTED_REGISTRY);
@@ -386,6 +399,7 @@ void remove_registry(Header* header, Registry* registry, FILE* file) {
         T1HeaderMetadata* header_metadata = header->header_metadata;
         T1RegistryMetadata* registry_metadata = registry->registry_metadata;
 
+        // Update metadata for removal status
         registry_metadata->removido = REMOVED;
         registry_metadata->prox = header_metadata->topo;
 
@@ -393,6 +407,7 @@ void remove_registry(Header* header, Registry* registry, FILE* file) {
         go_to_registry(registry, file);
         write_registry(registry, file);
 
+        // Update header removal references
         header_metadata->topo = (int32_t) get_registry_reference(header, registry->offset);
         header_metadata->nroRegRem++;
     }
@@ -405,11 +420,13 @@ void remove_registry(Header* header, Registry* registry, FILE* file) {
         int64_t current_top = header_metadata->topo;
 
         if (current_top != -1) {
+            // Load queue front registry
             seek_registry(header, file, current_top);
             Registry* prev_registry = NULL;
             Registry* cur_registry = build_registry(header);
             read_registry(cur_registry, file);
 
+            // Ordered-insert the removed registry in the queue
             while (cur_registry != NULL && ((T2RegistryMetadata*)cur_registry->registry_metadata)->tamanhoRegistro >= registry_metadata->tamanhoRegistro) {
                 T2RegistryMetadata* cur_registry_metadata = cur_registry->registry_metadata;
 
@@ -469,6 +486,12 @@ void remove_registry(Header* header, Registry* registry, FILE* file) {
     }
 }
 
+/**
+ * Add registry to the given file (reuses previously removed ones if possible)
+ * @param header target file header
+ * @param registry target registry to add
+ * @param file target file
+ */
 void add_registry(Header* header, Registry* registry, FILE* file) {
     ex_assert(header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
     ex_assert(file != NULL, EX_FILE_ERROR);
@@ -549,6 +572,13 @@ void add_registry(Header* header, Registry* registry, FILE* file) {
     }
 }
 
+/**
+ * Update an already existing registry on the file (handle size changes and other shenanigans)
+ * @param header target file header
+ * @param registry target registry to update (with modified data and appropriate offset)
+ * @param file target file
+ * @return if the update resulted in a new registry offset
+ */
 bool update_registry(Header* header, Registry* registry, FILE* file) {
     ex_assert(header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
     ex_assert(registry->offset != SIZE_MAX, EX_CORRUPTED_REGISTRY);
@@ -582,14 +612,33 @@ bool update_registry(Header* header, Registry* registry, FILE* file) {
     return false;
 }
 
+/**
+ * Jump to the target registry on the file (based on its read offset)
+ * @param registry target registry
+ * @param file target file
+ */
 void go_to_registry(Registry* registry, FILE* file) {
     go_to_offset(registry->offset, file);
 }
 
+/**
+ * Jump to the given offset in the file
+ *
+ * yes, this is just an fseek alias
+ * @param offset target offset
+ * @param file target file
+ */
 void go_to_offset(size_t offset, FILE* file) {
     fseek(file, (long) offset, SEEK_SET);
 }
 
+/**
+ * Retrieve current offset on the file
+ *
+ * yes, this is just an ftell alias
+ * @param file target file
+ * @return current file offset
+ */
 size_t current_offset(FILE* file) {
     return (size_t) ftell(file);
 }

@@ -10,6 +10,10 @@
 #include "../exception/exception.h"
 
 // Memory management //
+/**
+ * Allocate and setup new index header
+ * @return the allocated header
+ */
 IndexHeader* new_index_header() {
     IndexHeader* index_header = malloc(sizeof (struct IndexHeader));
 
@@ -23,6 +27,10 @@ IndexHeader* new_index_header() {
     return index_header;
 }
 
+/**
+ * Destroys (frees) target index header
+ * @param index_header target index header
+ */
 void destroy_index_header(IndexHeader* index_header) {
     if (index_header == NULL) {
         return;
@@ -33,12 +41,22 @@ void destroy_index_header(IndexHeader* index_header) {
     free(index_header);
 }
 
+/**
+ * Allocates a new index for the given registry type
+ * @param registry_type target registry type
+ * @return the allocated index
+ */
 IndexHeader* new_index(RegistryType registry_type) {
     IndexHeader* index_header = new_index_header();
     index_header->registry_type = registry_type;
     return index_header;
 }
 
+/**
+ * Reserve a new position in the index pool (increases the pool_used and, if needed, the pool size)
+ * @param index_header target index header
+ * @return the index of the new allocated position (pool_used - 1)
+ */
 uint32_t reserve_pool_position(IndexHeader* index_header){
     // There is still space on the pool
     if (index_header->pool_used < index_header->pool_size) {
@@ -55,7 +73,7 @@ uint32_t reserve_pool_position(IndexHeader* index_header){
     }
 
     // Extend pool size (using exponential approach)
-    IndexElement* new_pool = realloc(index_header->index_pool, index_header->pool_size * POOL_SCALING_FACTOR);
+    IndexElement* new_pool = realloc(index_header->index_pool, index_header->pool_size * POOL_SCALING_FACTOR * sizeof (struct IndexElement));
 
     if (new_pool == NULL) {
         ex_raise(EX_MEMORY_ERROR);
@@ -144,11 +162,25 @@ bool index_remove(IndexHeader* index_header, int32_t id) {
         return false;
     }
 
-    uint32_t last = index_header->pool_used - 1;
-    index_header->pool_used--;
+    // Should always be false
+    if (!index_header->sorted) {
+        uint32_t last = index_header->pool_used - 1;
+        index_header->pool_used--;
 
-    if (idx != last) {
-        index_header->index_pool[idx] = index_header->index_pool[last];
+        if (idx != last) {
+            index_header->index_pool[idx] = index_header->index_pool[last];
+        }
+    } else {
+        // Remove with shifting
+        uint32_t last = index_header->pool_used - 1;
+        index_header->pool_used--;
+
+        for (uint32_t i = idx; i < last; i++) {
+            // Swap current element with the next one
+            IndexElement tmp = index_header->index_pool[i];
+            index_header->index_pool[i] = index_header->index_pool[i + 1];
+            index_header->index_pool[i + 1] = tmp;
+        }
     }
 
     index_header->sorted = false;
@@ -173,11 +205,23 @@ bool index_add(IndexHeader* index_header, int32_t id, uint64_t reference) {
         return false;
     }
 
-    index_header->sorted = false;
-
     uint32_t insertion_pos = reserve_pool_position(index_header);
     index_header->index_pool[insertion_pos].id = id;
     index_header->index_pool[insertion_pos].reference = reference;
+
+    // Insertion sort the new element
+    if (index_header->sorted) {
+        for (uint32_t i = insertion_pos; i > 0; i--) {
+            // Swap elements if out of order
+            if (index_header->index_pool[i].id < index_header->index_pool[i - 1].id) {
+                IndexElement tmp = index_header->index_pool[i];
+                index_header->index_pool[i] = index_header->index_pool[i - 1];
+                index_header->index_pool[i - 1] = tmp;
+            } else {
+                break ;
+            }
+        }
+    }
 
     return true;
 }
@@ -269,6 +313,12 @@ void index_sort(IndexHeader* index_header) {
 
 // File I/O //
 
+/**
+ * Write entire index into the target file
+ * @param index_header target index header
+ * @param dest destination file
+ * @return amount of bytes written
+ */
 size_t write_index(IndexHeader* index_header, FILE* dest) {
     ex_assert(index_header != NULL, EX_GENERIC_ERROR);
     ex_assert(dest != NULL, EX_FILE_ERROR);
@@ -289,6 +339,12 @@ size_t write_index(IndexHeader* index_header, FILE* dest) {
     return written_bytes;
 }
 
+/**
+ * Read entire index from the target file
+ * @param index_header target index header
+ * @param src source file
+ * @return amount of bytes read
+ */
 size_t read_index(IndexHeader* index_header, FILE* src) {
     ex_assert(index_header != NULL, EX_GENERIC_ERROR);
     ex_assert(src != NULL, EX_FILE_ERROR);
@@ -320,6 +376,12 @@ size_t read_index(IndexHeader* index_header, FILE* src) {
     return read_bytes;
 }
 
+/**
+ * Write index header into the target file
+ * @param index_header target index header
+ * @param dest destination file
+ * @return amount of bytes written
+ */
 size_t write_index_header(IndexHeader* index_header, FILE* dest) {
     ex_assert(index_header != NULL, EX_GENERIC_ERROR);
     ex_assert(dest != NULL, EX_FILE_ERROR);
@@ -331,6 +393,12 @@ size_t write_index_header(IndexHeader* index_header, FILE* dest) {
     return written_bytes;
 }
 
+/**
+ * Read index header from the target file
+ * @param index_header target index header
+ * @param src source file
+ * @return amount of bytes read
+ */
 size_t read_index_header(IndexHeader* index_header, FILE* src) {
     ex_assert(index_header != NULL, EX_GENERIC_ERROR);
     ex_assert(src != NULL, EX_FILE_ERROR);
@@ -342,6 +410,13 @@ size_t read_index_header(IndexHeader* index_header, FILE* src) {
     return read_bytes;
 }
 
+/**
+ * Write index element into the target file
+ * @param index_header target index header
+ * @param index_element target index element
+ * @param dest destination file
+ * @return amount of bytes written
+ */
 size_t write_index_element(IndexHeader* index_header, IndexElement* index_element, FILE* dest) {
     ex_assert(index_header != NULL, EX_GENERIC_ERROR);
     ex_assert(index_element != NULL, EX_GENERIC_ERROR);
@@ -361,6 +436,13 @@ size_t write_index_element(IndexHeader* index_header, IndexElement* index_elemen
     return written_bytes;
 }
 
+/**
+ * Read index element from the target file
+ * @param index_header target index header
+ * @param index_element target index element
+ * @param src source file
+ * @return amount of bytes read
+ */
 size_t read_index_element(IndexHeader* index_header, IndexElement* index_element, FILE* src) {
     ex_assert(index_header != NULL, EX_GENERIC_ERROR);
     ex_assert(index_element != NULL, EX_GENERIC_ERROR);
@@ -382,9 +464,20 @@ size_t read_index_element(IndexHeader* index_header, IndexElement* index_element
 }
 
 // Index info //
+/**
+ * Update index status (memory only)
+ * @param index_header target index header
+ * @param status new status
+ */
 void set_index_status(IndexHeader* index_header, char status) {
     index_header->status = status;
 }
+
+/**
+ * Get index status (from memory)
+ * @param index_header target index header
+ * @return index status
+ */
 char get_index_status(IndexHeader* index_header) {
     return index_header->status;
 }
