@@ -2,5 +2,6 @@
 ./binario2.bin
 ./binario3.bin
 ./binario4.bin
+./binario17.bin
 !/out/*.out
 tmp.txt

@@ -27,7 +27,7 @@ if [ $build == 1 ]; then
 fi
 
 
-for i in {1..16}
+for i in {1..24}
 do
   echo "Testing $i"
   $test_script "$i"

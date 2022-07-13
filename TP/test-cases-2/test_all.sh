@@ -28,7 +28,7 @@ fi
 
 ./reset.sh
 
-for i in {1..16}
+for i in {1..22}
 do
   echo "Testing $i"
   $test_script "$i"

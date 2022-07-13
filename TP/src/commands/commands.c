@@ -643,11 +643,13 @@ void c_insert_registry(CommandArgs* args) {
             registry->registry_content->modelo[len_modelo] = '\0';
         }
 
-
-        // Write the registry
-        add_registry(header, registry, registry_file);
-        // Update the index
-        index_add(index_header, registry->registry_content->id, get_registry_reference(header, registry->offset));
+        // Check for already existing ID
+        if (index_query(index_header, current_insertion.id) == NULL) {
+            // Write the registry
+            add_registry(header, registry, registry_file);
+            // Update the index
+            index_add(index_header, registry->registry_content->id, get_registry_reference(header, registry->offset));
+        }
     }
 
     // Cleanup
