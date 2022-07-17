@@ -9,7 +9,6 @@
 
 #include "commands.h"
 #include "common.h"
-#include "../const/const.h"
 #include "../utils/provided_functions.h"
 #include "../utils/utils.h"
 #include "../exception/exception.h"
@@ -40,16 +39,20 @@ void execute(FILE* data_in) {
         case DESERIALIZE_SEARCH_RRN_AND_PRINT:
             c_deserialize_direct_access_rrn_and_print(args);
             break;
-        case BUILD_INDEX_FROM_REGISTRY:
+        case BUILD_BTREE_INDEX_FROM_REGISTRY:
+        case BUILD_LINEAR_INDEX_FROM_REGISTRY:
             c_build_index_from_registry(args);
             break;
-        case REMOVE_REGISTRY:
+        case REMOVE_REGISTRY_WITH_BTREE_INDEX:
+        case REMOVE_REGISTRY_WITH_LINEAR_INDEX:
             c_remove_registry(args);
             break;
-        case INSERT_REGISTRY:
+        case INSERT_REGISTRY_WITH_BTREE_INDEX:
+        case INSERT_REGISTRY_WITH_LINEAR_INDEX:
             c_insert_registry(args);
             break;
-        case UPDATE_REGISTRY:
+        case UPDATE_REGISTRY_WITH_BTREE_INDEX:
+        case UPDATE_REGISTRY_WITH_LINEAR_INDEX:
             c_update_registry(args);
             break;
     }
@@ -164,20 +167,21 @@ CommandArgs* read_command(FILE* source) {
 
     // Create base args //
     CommandArgs* args = new_command_args(command);
+    args->index_type = IT_LINEAR;
 
     // Read file type //
     read_buffer_string(source, buffer);
 
     // Check if a valid file type was inserted
-    args->registry_type = UNKNOWN;
+    args->registry_type = RT_UNKNOWN;
     if (strncasecmp("tipo1", buffer, 6) == 0) {
-        args->registry_type = FIX_LEN;
+        args->registry_type = RT_FIX_LEN;
     } else if (strncasecmp("tipo2", buffer, 6) == 0) {
-        args->registry_type = VAR_LEN;
+        args->registry_type = RT_VAR_LEN;
     }
 
     // Invalid registry type
-    if (args->registry_type == UNKNOWN) {
+    if (args->registry_type == RT_UNKNOWN) {
         puts(EX_COMMAND_PARSE_ERROR);
         destroy_command_args(args);
         return NULL;
@@ -192,7 +196,9 @@ CommandArgs* read_command(FILE* source) {
     // Handle command-specific params //
 
     switch (args->command) {
-        case BUILD_INDEX_FROM_REGISTRY:
+        case BUILD_BTREE_INDEX_FROM_REGISTRY:
+            args->index_type = IT_B_TREE;
+        case BUILD_LINEAR_INDEX_FROM_REGISTRY:
         case PARSE_AND_SERIALIZE:
             read_secondary_file_path(source, args);
             break;
@@ -241,7 +247,10 @@ CommandArgs* read_command(FILE* source) {
             args->specific_data = rrn_args;
             break;
 
-        case REMOVE_REGISTRY:
+
+        case REMOVE_REGISTRY_WITH_BTREE_INDEX:
+            args->index_type = IT_B_TREE;
+        case REMOVE_REGISTRY_WITH_LINEAR_INDEX:
             // Load secondary file path
             read_secondary_file_path(source, args);
             RemovalArgs* removal_args = malloc(sizeof (struct RemovalArgs));
@@ -298,7 +307,9 @@ CommandArgs* read_command(FILE* source) {
             }
             break;
 
-        case INSERT_REGISTRY:
+        case INSERT_REGISTRY_WITH_BTREE_INDEX:
+            args->index_type = IT_B_TREE;
+        case INSERT_REGISTRY_WITH_LINEAR_INDEX:
             // Load secondary file path
             read_secondary_file_path(source, args);
 
@@ -330,7 +341,9 @@ CommandArgs* read_command(FILE* source) {
             }
             break;
 
-        case UPDATE_REGISTRY:
+        case UPDATE_REGISTRY_WITH_BTREE_INDEX:
+            args->index_type = IT_B_TREE;
+        case UPDATE_REGISTRY_WITH_LINEAR_INDEX:
             // Load secondary file path
             read_secondary_file_path(source, args);
 

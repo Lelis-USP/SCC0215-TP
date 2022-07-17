@@ -9,7 +9,7 @@
 #include "registry.h"
 
 /**
- * VAR_LEN header metadata struct
+ * RT_VAR_LEN header metadata struct
  */
 typedef struct T2HeaderMetadata {
     char status;
@@ -21,7 +21,7 @@ typedef struct T2HeaderMetadata {
 static const size_t T2_HEADER_SIZE = 190;
 
 /**
- * VAR_LEN registry metadata struct
+ * RT_VAR_LEN registry metadata struct
  */
 typedef struct T2RegistryMetadata {
     char removido;
@@ -35,7 +35,7 @@ static const size_t T2_IGNORED_SIZE = member_size(T2RegistryMetadata, removido) 
 // File I/O //
 
 /**
- * Writes the given header (of type VAR_LEN) into the target file
+ * Writes the given header (of type RT_VAR_LEN) into the target file
  * @param header header to be written
  * @param dest destination file
  * @return the amount of bytes written
@@ -43,7 +43,7 @@ static const size_t T2_IGNORED_SIZE = member_size(T2RegistryMetadata, removido) 
 size_t t2_write_header(Header* header, FILE* dest);
 
 /**
- * Reads the given header (of type VAR_LEN) from the target file
+ * Reads the given header (of type RT_VAR_LEN) from the target file
  * @param header header to be read into
  * @param src source file
  * @return the amount of bytes read
@@ -58,7 +58,7 @@ size_t t2_read_header(Header* header, FILE* src);
 size_t t2_minimum_registry_size(Registry* registry);
 
 /**
- * Writes the given registry (of type VAR_LEN) into the target file
+ * Writes the given registry (of type RT_VAR_LEN) into the target file
  * @param registry registry to be written
  * @param dest destination file
  * @return the amount of bytes written
@@ -66,7 +66,7 @@ size_t t2_minimum_registry_size(Registry* registry);
 size_t t2_write_registry(Registry* registry, FILE* dest);
 
 /**
- * Reads the given registry (of type VAR_LEN) from the target file
+ * Reads the given registry (of type RT_VAR_LEN) from the target file
  * @param registry registry to be read into
  * @param src source file
  * @return the amount of bytes read
@@ -76,13 +76,13 @@ size_t t2_read_registry(Registry* registry, FILE* src);
 // Setup //
 
 /**
- * Setups the given VAR_LEN header metadata
+ * Setups the given RT_VAR_LEN header metadata
  * @param header_metadata target header metadata
  */
 void t2_setup_header_metadata(T2HeaderMetadata* header_metadata);
 
 /**
- * Setups the given VAR_LEN registry metadata
+ * Setups the given RT_VAR_LEN registry metadata
  * @param registry_metadata
  */
 void t2_setup_registry_metadata(T2RegistryMetadata* registry_metadata);
@@ -90,13 +90,13 @@ void t2_setup_registry_metadata(T2RegistryMetadata* registry_metadata);
 // Allocators //
 
 /**
- * Allocates and setup a new VAR_LEN header metadata
+ * Allocates and setup a new RT_VAR_LEN header metadata
  * @return the allocated header metadata
  */
 T2HeaderMetadata* t2_new_header_metadata();
 
 /**
- * Allocates and setup a new VAR_LEN registry metadata
+ * Allocates and setup a new RT_VAR_LEN registry metadata
  * @return the allocated registry metadata
  */
 T2RegistryMetadata* t2_new_registry_metadata();

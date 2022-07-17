@@ -19,7 +19,7 @@
  */
 void setup_header(Header* header) {
     switch (header->registry_type) {
-        case FIX_LEN:
+        case RT_FIX_LEN:
             // Setup header content
             if (header->header_content == NULL) {
                 header->header_content = new_header_content();
@@ -34,7 +34,7 @@ void setup_header(Header* header) {
                 t1_setup_header_metadata(header->header_metadata);
             }
             break;
-        case VAR_LEN:
+        case RT_VAR_LEN:
             // Setup header content
             if (header->header_content == NULL) {
                 header->header_content = new_header_content();
@@ -50,7 +50,7 @@ void setup_header(Header* header) {
             }
             break;
         default:
-            header->registry_type = UNKNOWN;
+            header->registry_type = RT_UNKNOWN;
             header->header_metadata = NULL;
             header->header_content = NULL;
             break;
@@ -64,7 +64,7 @@ void setup_header(Header* header) {
 void setup_registry(Registry* registry) {
     registry->offset = SIZE_MAX;
     switch (registry->registry_type) {
-        case FIX_LEN:
+        case RT_FIX_LEN:
             // Setup registry content
             if (registry->registry_content == NULL) {
                 registry->registry_content = new_registry_content();
@@ -79,7 +79,7 @@ void setup_registry(Registry* registry) {
                 t1_setup_registry_metadata(registry->registry_metadata);
             }
             break;
-        case VAR_LEN:
+        case RT_VAR_LEN:
             // Setup registry content
             if (registry->registry_content == NULL) {
                 registry->registry_content = new_registry_content();
@@ -95,7 +95,7 @@ void setup_registry(Registry* registry) {
             }
             break;
         default:
-            registry->registry_type = UNKNOWN;
+            registry->registry_type = RT_UNKNOWN;
             registry->registry_content = NULL;
             registry->registry_metadata = NULL;
             break;
@@ -108,7 +108,7 @@ void setup_registry(Registry* registry) {
  */
 Header* new_header() {
     Header* header = malloc(sizeof (struct Header));
-    header->registry_type = UNKNOWN;
+    header->registry_type = RT_UNKNOWN;
     setup_header(header);
     return header;
 }
@@ -119,7 +119,7 @@ Header* new_header() {
  */
 Registry* new_registry() {
     Registry* registry = malloc(sizeof (struct Registry));
-    registry->registry_type = UNKNOWN;
+    registry->registry_type = RT_UNKNOWN;
     setup_registry(registry);
     return registry;
 }
@@ -138,10 +138,10 @@ void destroy_header(Header* header) {
 
     // Destroy metadata
     switch (header->registry_type) {
-        case FIX_LEN:
+        case RT_FIX_LEN:
             t1_destroy_header_metadata(header->header_metadata);
             break;
-        case VAR_LEN:
+        case RT_VAR_LEN:
             t2_destroy_header_metadata(header->header_metadata);
             break;
         default:
@@ -166,10 +166,10 @@ void destroy_registry(Registry* registry) {
 
     // Destroy metadata
     switch (registry->registry_type) {
-        case FIX_LEN:
+        case RT_FIX_LEN:
             t1_destroy_registry_metadata(registry->registry_metadata);
             break;
-        case VAR_LEN:
+        case RT_VAR_LEN:
             t2_destroy_registry_metadata(registry->registry_metadata);
             break;
         default:
@@ -203,11 +203,11 @@ Header* build_default_header(RegistryType registry_type) {
     setup_header(header);
 
     switch (registry_type) {
-        case FIX_LEN:
+        case RT_FIX_LEN:
             memcpy(header->header_metadata, &DEFAULT_T1_HEADER_METADATA, sizeof (struct T1HeaderMetadata));
             memcpy(header->header_content, &DEFAULT_HEADER_CONTENT, sizeof (struct HeaderContent));
             break;
-        case VAR_LEN:
+        case RT_VAR_LEN:
             memcpy(header->header_metadata, &DEFAULT_T2_HEADER_METADATA, sizeof (struct T2HeaderMetadata));
             memcpy(header->header_content, &DEFAULT_HEADER_CONTENT, sizeof (struct HeaderContent));
             break;
@@ -257,10 +257,10 @@ size_t write_header(Header* header, FILE* dest) {
 
     size_t written_bytes = 0;
     switch (header->registry_type) {
-        case FIX_LEN:
+        case RT_FIX_LEN:
             written_bytes += t1_write_header(header, dest);
             break;
-        case VAR_LEN:
+        case RT_VAR_LEN:
             written_bytes += t2_write_header(header, dest);
             break;
         default:
@@ -286,10 +286,10 @@ size_t read_header(Header* header, FILE* src) {
     size_t read_bytes = 0;
 
     switch (header->registry_type) {
-        case FIX_LEN:
+        case RT_FIX_LEN:
             read_bytes += t1_read_header(header, src);
             break;
-        case VAR_LEN:
+        case RT_VAR_LEN:
             read_bytes += t2_read_header(header, src);
             break;
         default:
@@ -315,10 +315,10 @@ size_t write_registry(Registry* registry, FILE* dest) {
     size_t written_bytes = 0;
 
     switch (registry->registry_type) {
-        case FIX_LEN:
+        case RT_FIX_LEN:
             written_bytes += t1_write_registry(registry, dest);
             break;
-        case VAR_LEN:
+        case RT_VAR_LEN:
             written_bytes += t2_write_registry(registry, dest);
             break;
         default:
@@ -346,10 +346,10 @@ size_t read_registry(Registry* registry, FILE* src) {
     size_t read_bytes = 0;
 
     switch (registry->registry_type) {
-        case FIX_LEN:
+        case RT_FIX_LEN:
             read_bytes += t1_read_registry(registry, src);
             break;
-        case VAR_LEN:
+        case RT_VAR_LEN:
             read_bytes += t2_read_registry(registry, src);
             break;
         default:
@@ -368,13 +368,13 @@ size_t read_registry(Registry* registry, FILE* src) {
  * @return the amount of bytes used by the registry
  */
 size_t total_registry_size(Registry* registry) {
-    ex_assert(registry->registry_type != UNKNOWN, EX_GENERIC_ERROR);
+    ex_assert(registry->registry_type != RT_UNKNOWN, EX_GENERIC_ERROR);
 
-    if (registry->registry_type == FIX_LEN) {
+    if (registry->registry_type == RT_FIX_LEN) {
         return T1_REGISTRY_SIZE;
     }
 
-    if (registry->registry_type == VAR_LEN) {
+    if (registry->registry_type == RT_VAR_LEN) {
         T2RegistryMetadata* registry_metadata = registry->registry_metadata;
         size_t registry_size = max(t2_minimum_registry_size(registry), registry_metadata->tamanhoRegistro);
         return T2_IGNORED_SIZE + registry_size;
@@ -390,12 +390,12 @@ size_t total_registry_size(Registry* registry) {
  * @param file target file
  */
 void remove_registry(Header* header, Registry* registry, FILE* file) {
-    ex_assert(registry->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
+    ex_assert(registry->registry_type != RT_UNKNOWN, EX_CORRUPTED_REGISTRY);
     ex_assert(registry->offset != SIZE_MAX, EX_CORRUPTED_REGISTRY);
     ex_assert(header->registry_type == registry->registry_type, EX_CORRUPTED_REGISTRY);
     ex_assert(file != NULL, EX_FILE_ERROR);
 
-    if (registry->registry_type == FIX_LEN) {
+    if (registry->registry_type == RT_FIX_LEN) {
         T1HeaderMetadata* header_metadata = header->header_metadata;
         T1RegistryMetadata* registry_metadata = registry->registry_metadata;
 
@@ -412,7 +412,7 @@ void remove_registry(Header* header, Registry* registry, FILE* file) {
         header_metadata->nroRegRem++;
     }
 
-    if (registry->registry_type == VAR_LEN) {
+    if (registry->registry_type == RT_VAR_LEN) {
         T2HeaderMetadata* header_metadata = header->header_metadata;
         T2RegistryMetadata* registry_metadata = registry->registry_metadata;
 
@@ -493,10 +493,10 @@ void remove_registry(Header* header, Registry* registry, FILE* file) {
  * @param file target file
  */
 void add_registry(Header* header, Registry* registry, FILE* file) {
-    ex_assert(header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
+    ex_assert(header->registry_type != RT_UNKNOWN, EX_CORRUPTED_REGISTRY);
     ex_assert(file != NULL, EX_FILE_ERROR);
 
-    if (header->registry_type == FIX_LEN) {
+    if (header->registry_type == RT_FIX_LEN) {
         T1HeaderMetadata* header_metadata = header->header_metadata;
 
         // Reset registry metadata
@@ -532,7 +532,7 @@ void add_registry(Header* header, Registry* registry, FILE* file) {
         write_registry(registry, file);
     }
 
-    if (header->registry_type == VAR_LEN) {
+    if (header->registry_type == RT_VAR_LEN) {
         T2HeaderMetadata* header_metadata = header->header_metadata;
         T2RegistryMetadata* registry_metadata = registry->registry_metadata;
 
@@ -580,19 +580,19 @@ void add_registry(Header* header, Registry* registry, FILE* file) {
  * @return if the update resulted in a new registry offset
  */
 bool update_registry(Header* header, Registry* registry, FILE* file) {
-    ex_assert(header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
+    ex_assert(header->registry_type != RT_UNKNOWN, EX_CORRUPTED_REGISTRY);
     ex_assert(registry->offset != SIZE_MAX, EX_CORRUPTED_REGISTRY);
     ex_assert(file != NULL, EX_FILE_ERROR);
 
     // Fixed Len always can overwrite
-    if (header->registry_type == FIX_LEN) {
+    if (header->registry_type == RT_FIX_LEN) {
         // Go to the beginning of the target registry
         go_to_registry(registry, file);
         write_registry(registry, file);
         return false;
     }
 
-    if (header->registry_type == VAR_LEN) {
+    if (header->registry_type == RT_VAR_LEN) {
         T2RegistryMetadata* registry_metadata = registry->registry_metadata;
 
         size_t new_size = total_registry_size(registry);
@@ -649,13 +649,13 @@ size_t current_offset(FILE* file) {
  * @return if the registry is removed
  */
 bool is_registry_removed(Registry* registry) {
-    ex_assert(registry->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
+    ex_assert(registry->registry_type != RT_UNKNOWN, EX_CORRUPTED_REGISTRY);
 
-    if (registry->registry_type == FIX_LEN) {
+    if (registry->registry_type == RT_FIX_LEN) {
         return ((T1RegistryMetadata*) registry->registry_metadata)->removido == REMOVED;
     }
 
-    if (registry->registry_type == VAR_LEN) {
+    if (registry->registry_type == RT_VAR_LEN) {
         return ((T2RegistryMetadata*) registry->registry_metadata)->removido == REMOVED;
     }
 
@@ -668,14 +668,14 @@ bool is_registry_removed(Registry* registry) {
  * @param status the new header status
  */
 void set_header_status(Header* header, char status) {
-    ex_assert(header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
+    ex_assert(header->registry_type != RT_UNKNOWN, EX_CORRUPTED_REGISTRY);
 
-    if (header->registry_type == FIX_LEN) {
+    if (header->registry_type == RT_FIX_LEN) {
         T1HeaderMetadata* header_metadata = header->header_metadata;
         header_metadata->status = status;
     }
 
-    if (header->registry_type == VAR_LEN) {
+    if (header->registry_type == RT_VAR_LEN) {
         T2HeaderMetadata* header_metadata = header->header_metadata;
         header_metadata->status = status;
     }
@@ -687,14 +687,14 @@ void set_header_status(Header* header, char status) {
  * @return the current header status
  */
 char get_header_status(Header* header) {
-    ex_assert(header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
+    ex_assert(header->registry_type != RT_UNKNOWN, EX_CORRUPTED_REGISTRY);
 
-    if (header->registry_type == FIX_LEN) {
+    if (header->registry_type == RT_FIX_LEN) {
         T1HeaderMetadata* header_metadata = header->header_metadata;
         return header_metadata->status;
     }
 
-    if (header->registry_type == VAR_LEN) {
+    if (header->registry_type == RT_VAR_LEN) {
         T2HeaderMetadata* header_metadata = header->header_metadata;
         return header_metadata->status;
     }
@@ -708,17 +708,17 @@ char get_header_status(Header* header) {
  * @param appended_bytes the number of bytes appended to the end of the file on the last write
  */
 void header_increment_next(Header* header, size_t appended_bytes) {
-    ex_assert(header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
+    ex_assert(header->registry_type != RT_UNKNOWN, EX_CORRUPTED_REGISTRY);
 
 
-    if (header->registry_type == FIX_LEN) {
+    if (header->registry_type == RT_FIX_LEN) {
         T1HeaderMetadata* header_metadata = header->header_metadata;
         if (appended_bytes != 0) {
             header_metadata->proxRRN++;
         }
     }
 
-    if (header->registry_type == VAR_LEN) {
+    if (header->registry_type == RT_VAR_LEN) {
         T2HeaderMetadata* header_metadata = header->header_metadata;
         header_metadata->proxByteOffset += (int64_t) appended_bytes;
     }
@@ -730,14 +730,14 @@ void header_increment_next(Header* header, size_t appended_bytes) {
  * @return the next offset after the end (aka, loop until less than, not equal)
  */
 size_t get_max_offset(Header* header) {
-    ex_assert(header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
+    ex_assert(header->registry_type != RT_UNKNOWN, EX_CORRUPTED_REGISTRY);
 
-    if (header->registry_type == FIX_LEN) {
+    if (header->registry_type == RT_FIX_LEN) {
         T1HeaderMetadata* header_metadata = header->header_metadata;
         return T1_HEADER_SIZE + ((size_t) header_metadata->proxRRN * T1_REGISTRY_SIZE);
     }
 
-    if (header->registry_type == VAR_LEN) {
+    if (header->registry_type == RT_VAR_LEN) {
         T2HeaderMetadata* header_metadata = header->header_metadata;
         return header_metadata->proxByteOffset;
     }
@@ -753,9 +753,9 @@ size_t get_max_offset(Header* header) {
  * @return if the seek was successful
  */
 bool seek_registry(Header* header, FILE* file, size_t target) {
-    ex_assert(header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
+    ex_assert(header->registry_type != RT_UNKNOWN, EX_CORRUPTED_REGISTRY);
 
-    if (header->registry_type == FIX_LEN) {
+    if (header->registry_type == RT_FIX_LEN) {
         T1HeaderMetadata* header_metadata = header->header_metadata;
         size_t offset = T1_HEADER_SIZE + (target * T1_REGISTRY_SIZE);
         size_t max_offset = T1_HEADER_SIZE + (header_metadata->proxRRN * T1_REGISTRY_SIZE);
@@ -768,7 +768,7 @@ bool seek_registry(Header* header, FILE* file, size_t target) {
         return true;
     }
 
-    if (header->registry_type == VAR_LEN) {
+    if (header->registry_type == RT_VAR_LEN) {
         T2HeaderMetadata* header_metadata = header->header_metadata;
 
         if (header_metadata->proxByteOffset <= target) {
@@ -790,9 +790,9 @@ bool seek_registry(Header* header, FILE* file, size_t target) {
  * @return the registry's relative position
  */
 size_t get_registry_reference(Header* header, size_t total_bytes_before_read) {
-    ex_assert(header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
+    ex_assert(header->registry_type != RT_UNKNOWN, EX_CORRUPTED_REGISTRY);
 
-    if (header->registry_type == FIX_LEN) {
+    if (header->registry_type == RT_FIX_LEN) {
         size_t registries_read = total_bytes_before_read - T1_HEADER_SIZE;
         size_t rrn = registries_read / T1_REGISTRY_SIZE;
         return rrn;

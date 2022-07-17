@@ -224,7 +224,7 @@ void c_deserialize_direct_access_rrn_and_print(CommandArgs* args) {
     ex_assert(args->primary_file != NULL, EX_COMMAND_PARSE_ERROR);
 
     // Check for registry type
-    if (args->registry_type != FIX_LEN) {
+    if (args->registry_type != RT_FIX_LEN) {
         puts(EX_COMMAND_PARSE_ERROR);
         return;
     }
@@ -293,18 +293,28 @@ void c_build_index_from_registry(CommandArgs* args) {
         return;
     }
 
+    // Open index_file
+    FILE* index_file = fopen(args->secondary_file, "rb+");
+    if (index_file == NULL) {
+        puts(EX_FILE_ERROR);
+        return;
+    }
+
     // Allocate and read header
     Header* header = build_header(args->registry_type);
     size_t read_bytes = read_header(header, registry_file);
 
     // Create index header
-    IndexHeader* index_header = new_index(args->registry_type);
+    IndexHeader* index_header = new_index(args->registry_type, args->index_type);
     set_index_status(index_header, STATUS_BAD);
+    write_index_status(index_header, index_file);
+    set_index_file(index_header, index_file);
 
     // Check for read failure or bad status
     if (read_bytes == 0 || get_header_status(header) == STATUS_BAD) {
         puts(EX_FILE_ERROR);
         fclose(registry_file);
+        fclose(index_file);
         destroy_header(header);
         destroy_index_header(index_header);
         return;
@@ -324,7 +334,7 @@ void c_build_index_from_registry(CommandArgs* args) {
             }
 
             // Add registry to index
-            bool success = index_add(index_header, registry->registry_content->id, registry_reference);
+            bool success = index_add(index_header, registry->registry_content->id, (int64_t) registry_reference);
 
             // If the registry already exists
             if (!success) {
@@ -333,6 +343,7 @@ void c_build_index_from_registry(CommandArgs* args) {
                 destroy_registry(registry);
                 destroy_index_header(index_header);
                 fclose(registry_file);
+                fclose(index_file);
                 return;
             }
         }
@@ -345,20 +356,12 @@ void c_build_index_from_registry(CommandArgs* args) {
     destroy_header(header);
     fclose(registry_file);
 
-    // Open index_file
-    FILE* index_file = fopen(args->secondary_file, "wb");
-    if (index_file == NULL) {
-        puts(EX_FILE_ERROR);
-        return;
-    }
-
     // Write index
     write_index(index_header, index_file);
 
     // Update index status
-    fseek(index_file, 0, SEEK_SET);
     set_index_status(index_header, STATUS_GOOD);
-    write_index_header(index_header, index_file);
+    write_index_status(index_header, index_file);
 
     // Cleanup
     destroy_index_header(index_header);
@@ -398,7 +401,7 @@ void c_remove_registry(CommandArgs* args) {
     size_t first_registry_offset = read_header(header, registry_file); // Store the offset of the first registry
 
     // Load index
-    IndexHeader* index_header = new_index(args->registry_type);
+    IndexHeader* index_header = new_index(args->registry_type, args->index_type);
     size_t read_bytes_index = read_index(index_header, index_file);
 
     // Check for read failure or bad status
@@ -418,8 +421,7 @@ void c_remove_registry(CommandArgs* args) {
 
     // Update index header status
     set_index_status(index_header, STATUS_BAD);
-    fseek(index_file, 0, SEEK_SET);
-    write_index_header(index_header, index_file);
+    write_index_status(index_header, index_file);
 
     // Do each removal in the given order
     for (uint32_t i = 0; i < removal_args->n_removals; i++) {
@@ -437,16 +439,16 @@ void c_remove_registry(CommandArgs* args) {
             int32_t id = parse_int32_filter(filter_args);
 
             // Search for ID on index
-            IndexElement* index_match = index_query(index_header, id);
+            IndexElement index_match = index_query(index_header, id);
 
             // If not found, skip removal
-            if (index_match == NULL) {
+            if (index_match.id == -1) {
                 continue;
             }
 
             // Load target registry
             Registry* registry = build_registry(header);
-            seek_registry(header, registry_file, index_match->reference);
+            seek_registry(header, registry_file, index_match.reference);
             read_registry(registry, registry_file);
 
             // Check if the registry exists and match the filters
@@ -514,14 +516,11 @@ void c_remove_registry(CommandArgs* args) {
     }
 
     // Write the updated index
-    fseek(index_file, 0, SEEK_SET);
     write_index(index_header, index_file);
 
-
     // Update index status
-    fseek(index_file, 0, SEEK_SET);
     set_index_status(index_header, STATUS_GOOD);
-    write_index_header(index_header, index_file);
+    write_index_status(index_header, index_file);
 
     // Cleanup
     destroy_header(header);
@@ -565,7 +564,7 @@ void c_insert_registry(CommandArgs* args) {
     size_t first_registry_offset = read_header(header, registry_file);
 
     // Load index
-    IndexHeader* index_header = new_index(args->registry_type);
+    IndexHeader* index_header = new_index(args->registry_type, args->index_type);
     size_t read_bytes_index = read_index(index_header, index_file);
 
     // Check for read failure or bad status
@@ -585,8 +584,7 @@ void c_insert_registry(CommandArgs* args) {
 
     // Update index header status
     set_index_status(index_header, STATUS_BAD);
-    fseek(index_file, 0, SEEK_SET);
-    write_index_header(index_header, index_file);
+    write_index_status(index_header, index_file);
 
     Registry* registry = build_registry(header);
 
@@ -641,11 +639,11 @@ void c_insert_registry(CommandArgs* args) {
         }
 
         // Check for already existing ID
-        if (index_query(index_header, current_insertion.id) == NULL) {
+        if (index_query(index_header, current_insertion.id).id == -1) {
             // Write the registry
             add_registry(header, registry, registry_file);
             // Update the index
-            index_add(index_header, registry->registry_content->id, get_registry_reference(header, registry->offset));
+            index_add(index_header, registry->registry_content->id, (int64_t) get_registry_reference(header, registry->offset));
         }
     }
 
@@ -665,14 +663,11 @@ void c_insert_registry(CommandArgs* args) {
     }
 
     // Write updated index
-    fseek(index_file, 0, SEEK_SET);
     write_index(index_header, index_file);
 
-
     // Update index status
-    fseek(index_file, 0, SEEK_SET);
     set_index_status(index_header, STATUS_GOOD);
-    write_index_header(index_header, index_file);
+    write_index_status(index_header, index_file);
 
     // Cleanup
     destroy_header(header);
@@ -789,7 +784,7 @@ bool apply_registry_updates(Header* header, Registry* registry, UpdateTarget* up
 bool execute_update(Header* header, Registry* registry, UpdateTarget* current_update, FILE* registry_file, IndexHeader* index_header) {
     // Check if there will be conflicting ids
     if (current_update->update_id) {
-        if (current_update->id != registry->registry_content->id && index_query(index_header, current_update->id) != NULL) {
+        if (current_update->id != registry->registry_content->id && index_query(index_header, current_update->id).id != -1) {
             return false;
         }
     }
@@ -805,10 +800,10 @@ bool execute_update(Header* header, Registry* registry, UpdateTarget* current_up
     if (reindex) {
         // ID changed, so we need to remove the old one from the index and insert a new one
         index_remove(index_header, old_id);
-        index_add(index_header, registry->registry_content->id, get_registry_reference(header, registry->offset));
+        index_add(index_header, registry->registry_content->id, (int64_t) get_registry_reference(header, registry->offset));
     } else if (rereference) {
         // ID is the same, but the offset changed, so we need to update the index reference
-        index_update(index_header, registry->registry_content->id, get_registry_reference(header, registry->offset));
+        index_update(index_header, registry->registry_content->id, (int64_t) get_registry_reference(header, registry->offset));
     }
 
     return true;
@@ -844,7 +839,7 @@ void c_update_registry(CommandArgs* args) {
     size_t first_registry_offset = read_header(header, registry_file);
 
     // Load index
-    IndexHeader* index_header = new_index(args->registry_type);
+    IndexHeader* index_header = new_index(args->registry_type, args->index_type);
     size_t read_bytes_index = read_index(index_header, index_file);
 
     // Check for read failure or bad status
@@ -864,8 +859,7 @@ void c_update_registry(CommandArgs* args) {
 
     // Update index header status
     set_index_status(index_header, STATUS_BAD);
-    fseek(index_file, 0, SEEK_SET);
-    write_index_header(index_header, index_file);
+    write_index_status(index_header, index_file);
 
     // Allocate registry
     Registry* registry = build_registry(header);
@@ -886,15 +880,15 @@ void c_update_registry(CommandArgs* args) {
             int32_t id = parse_int32_filter(filter_args);
 
             // Search for id on index
-            IndexElement* index_match = index_query(index_header, id);
+            IndexElement index_match = index_query(index_header, id);
 
             // If id not found, skip
-            if (index_match == NULL) {
+            if (index_match.id == -1) {
                 continue;
             }
 
             // Load target registry
-            seek_registry(header, registry_file, index_match->reference);
+            seek_registry(header, registry_file, index_match.reference);
             read_registry(registry, registry_file);
 
             // If registry is not present or filters don't match, skip
@@ -954,13 +948,11 @@ void c_update_registry(CommandArgs* args) {
     }
 
     // Write the updated index
-    fseek(index_file, 0, SEEK_SET);
     write_index(index_header, index_file);
 
     // Update index status
-    fseek(index_file, 0, SEEK_SET);
     set_index_status(index_header, STATUS_GOOD);
-    write_index_header(index_header, index_file);
+    write_index_status(index_header, index_file);
 
     // Cleanup
     destroy_header(header);

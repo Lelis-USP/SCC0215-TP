@@ -1,9 +1,17 @@
+/*
+*  Daniel Henrique Lelis de Almeida - 12543822
+*/
+
 #include "btree_index.h"
 
 #include <stdlib.h>
 #include <string.h>
 
 #include "../exception/exception.h"
+
+///////////////////////
+// Memory management //
+///////////////////////
 
 BTreeIndexHeader* new_b_tree_index_header(RegistryType registry_type) {
     BTreeIndexHeader* header = malloc(sizeof(struct BTreeIndexHeader));
@@ -16,11 +24,11 @@ BTreeIndexHeader* new_b_tree_index_header(RegistryType registry_type) {
     header->registry_type = registry_type;
 
     switch (registry_type) {
-        case FIX_LEN:
+        case RT_FIX_LEN:
             header->page_size = DEFAULT_BTREE_PAGE_SIZE_FIX_LEN;
             header->degree = DEFAULT_BTREE_DEGREE;
             break;
-        case VAR_LEN:
+        case RT_VAR_LEN:
             header->page_size = DEFAULT_BTREE_PAGE_SIZE_VAR_LEN;
             header->degree = DEFAULT_BTREE_DEGREE;
             break;
@@ -82,144 +90,41 @@ void destroy_b_tree_index_node(BTreeIndexNode* b_tree_index_node) {
     free(b_tree_index_node);
 }
 
+BTreeIndexHeader* new_b_tree_index(RegistryType registry_type) {
+    return new_b_tree_index_header(registry_type);
+}
+
+//////////////////////////////
+// Private index operations //
+//////////////////////////////
+
+/**
+ * Go to the given RRN on the B-Tree
+ * @param index_header tree header
+ * @param target target file
+ * @param rrn destination RRN (-1 goes to the start of the file, aka the header)
+ */
 void seek_b_tree_node(BTreeIndexHeader* index_header, FILE* target, int32_t rrn) {
     ex_assert(rrn >= -1, EX_GENERIC_ERROR);
     fseek(target, (long) ((rrn + 1) * index_header->page_size), SEEK_SET);
 }
 
+/**
+ * Retrieve the current RRN on the file
+ * @param index_header tree header
+ * @param target target file
+ * @return the current RRN
+ */
 int32_t get_current_b_tree_rrn(BTreeIndexHeader* index_header, FILE* target) {
     return ((int32_t) (ftell(target) / index_header->page_size)) - 1;
 }
 
-size_t write_b_tree_index_header(BTreeIndexHeader* index_header, FILE* dest) {
-    ex_assert(index_header != NULL, EX_CORRUPTED_REGISTRY);
-    ex_assert(dest != NULL, EX_FILE_ERROR);
-
-    size_t written_bytes = 0;
-    written_bytes += fwrite_member_field(index_header, status, dest);
-    written_bytes += fwrite_member_field(index_header, no_raiz, dest);
-    written_bytes += fwrite_member_field(index_header, proxRRN, dest);
-    written_bytes += fwrite_member_field(index_header, nroNos, dest);
-
-    ex_assert(written_bytes == BTREE_HEADER_FIXED_SIZE, EX_FILE_ERROR);
-
-    // Fill the remainder of the page with filler bytes
-    written_bytes += fill_bytes(index_header->page_size - written_bytes, dest);
-    return written_bytes;
-}
-
-size_t read_b_tree_index_header(BTreeIndexHeader* index_header, FILE* src) {
-    ex_assert(index_header != NULL, EX_CORRUPTED_REGISTRY);
-    ex_assert(src != NULL, EX_FILE_ERROR);
-
-    // Ensure that the root node ref will be invalidated, if present
-    destroy_b_tree_index_node(index_header->root_node_ref);
-    index_header->root_node_ref = NULL;
-
-    // Read B-Tree header fields
-    size_t read_bytes = 0;
-
-    read_bytes += fread_member_field(index_header, status, src);
-    read_bytes += fread_member_field(index_header, no_raiz, src);
-    read_bytes += fread_member_field(index_header, proxRRN, src);
-    read_bytes += fread_member_field(index_header, nroNos, src);
-
-    // Go to the next disk page
-    seek_b_tree_node(index_header, src, 0);
-
-    return read_bytes;
-}
-
-size_t write_b_tree_index_node(BTreeIndexHeader* index_header, BTreeIndexNode* index_node, FILE* dest) {
-    ex_assert(index_header != NULL, EX_CORRUPTED_REGISTRY);
-    ex_assert(index_node != NULL, EX_CORRUPTED_REGISTRY);
-    ex_assert(dest != NULL, EX_FILE_ERROR);
-
-    ex_assert(index_node->nroChaves <= index_header->degree, EX_CORRUPTED_REGISTRY);
-
-    size_t written_bytes = 0;
-
-    // Write node metadata
-    written_bytes += fwrite_member_field(index_node, tipoNo, dest);
-    written_bytes += fwrite_member_field(index_node, nroChaves, dest);
-
-    // Write elements
-    for (uint32_t i = 0; i < index_header->degree - 1; i++) {
-        // Fill empty elements with NULL indicator
-        if (i >= index_node->nroChaves) {
-            index_node->elements[i].id = -1;
-            index_node->elements[i].reference = -1;
-        }
-
-        // Write ID
-        written_bytes += fwrite_member_field(&index_node->elements[i], id, dest);
-
-        // Write reference
-        if (index_header->registry_type == FIX_LEN) {
-            int32_t reference = (int32_t) index_node->elements[i].reference;
-            written_bytes += fwrite(&reference, 1, sizeof(reference), dest);
-        } else {
-            written_bytes += fwrite_member_field(&index_node->elements[i], reference, dest);
-        }
-    }
-
-    // Write edge references
-    for (uint32_t i = 0; i < index_header->degree; i++) {
-        written_bytes += fwrite(&index_node->edges[i], 1, sizeof(index_node->edges[i]), dest);
-    }
-
-    // Shouldn't actually be used, since page_size - written_bytes will always be 0, but just for completioness
-    written_bytes += fill_bytes(index_header->page_size - written_bytes, dest);
-
-    return written_bytes;
-}
-
-size_t read_b_tree_index_node(BTreeIndexHeader* index_header, BTreeIndexNode* index_node, FILE* src) {
-    ex_assert(index_header != NULL, EX_CORRUPTED_REGISTRY);
-    ex_assert(index_node != NULL, EX_CORRUPTED_REGISTRY);
-    ex_assert(src != NULL, EX_FILE_ERROR);
-
-    int32_t rrn = get_current_b_tree_rrn(index_header, src);
-    index_node->rrn = rrn;
-
-    size_t read_bytes = 0;
-
-    // Read node metadata
-    read_bytes += fread_member_field(index_node, tipoNo, src);
-    read_bytes += fread_member_field(index_node, nroChaves, src);
-
-    // Read elements
-    for (uint32_t i = 0; i < index_header->degree - 1; i++) {
-        // Write ID
-        read_bytes += fread_member_field(&index_node->elements[i], id, src);
-
-        // Write reference
-        if (index_header->registry_type == FIX_LEN) {
-            int32_t reference;
-            read_bytes += fread(&reference, 1, sizeof(reference), src);
-            index_node->elements[i].reference = reference;
-        } else {
-            read_bytes += fread_member_field(&index_node->elements[i], reference, src);
-        }
-
-        // Fill empty elements with NULL indicator
-        if (i >= index_node->nroChaves) {
-            index_node->elements[i].id = -1;
-            index_node->elements[i].reference = -1;
-        }
-    }
-
-    // Read edge references
-    for (uint32_t i = 0; i < index_header->degree; i++) {
-        read_bytes += fread(&index_node->edges[i], 1, sizeof(index_node->edges[i]), src);
-    }
-
-    return read_bytes;
-}
-
-
-// Operations //
-
+/**
+ * Search for the given ID in the tree node
+ * @param node the node to be searched
+ * @param id search target
+ * @return the index the id would be in the array
+ */
 uint32_t b_tree_node_search(BTreeIndexNode* node, int32_t id) {
     uint32_t low = 0;
     uint32_t high = node->nroChaves;
@@ -236,6 +141,12 @@ uint32_t b_tree_node_search(BTreeIndexNode* node, int32_t id) {
     return low;
 }
 
+/**
+ * Check if a given node is a leaf (actual leafs and root-leaf)
+ * @param index_header tree header
+ * @param index_node target node
+ * @return wheter the node is leaf or not
+ */
 bool b_tree_node_is_leaf(BTreeIndexHeader* index_header, BTreeIndexNode* index_node) {
     if (index_node->tipoNo == LEAF_NODE) {
         return true;
@@ -254,6 +165,13 @@ bool b_tree_node_is_leaf(BTreeIndexHeader* index_header, BTreeIndexNode* index_n
     return false;
 }
 
+/**
+ * Insert an element into the given node
+ * @param index_header tree header
+ * @param index_node target node
+ * @param node_insert_request element insertion request
+ * @return the insertion response
+ */
 BTreeNodeInsertResponse b_tree_node_insert_element(BTreeIndexHeader* index_header, BTreeIndexNode* index_node, BTreeNodeInsertRequest node_insert_request) {
     uint32_t idx = b_tree_node_search(index_node, node_insert_request.target.id);
 
@@ -278,6 +196,12 @@ BTreeNodeInsertResponse b_tree_node_insert_element(BTreeIndexHeader* index_heade
     return (BTreeNodeInsertResponse){false};
 }
 
+/**
+ * Split the given node
+ * @param index_header tree header
+ * @param index_node target node to split
+ * @return the newly created right-node and promotion info
+ */
 BTreeNodeSplitResponse b_tree_node_split(BTreeIndexHeader* index_header, BTreeIndexNode* index_node) {
     BTreeNodeSplitResponse response;
     uint32_t promotion_idx = index_node->nroChaves / 2;
@@ -315,6 +239,15 @@ BTreeNodeSplitResponse b_tree_node_split(BTreeIndexHeader* index_header, BTreeIn
     return response;
 }
 
+/**
+ * Handle insertion of any given element into the tree through its various layers
+ * @param index_header tree header
+ * @param parent current insertion parent node
+ * @param current_node_rrn current insertion node
+ * @param file target file
+ * @param index_element the element to be inserted
+ * @return the results of the insertion (conflicts and if there is a insertion to be made on the parent node)
+ */
 BTreeIndexInsertResponse b_tree_index_insert(BTreeIndexHeader* index_header, BTreeIndexNode* parent, int32_t current_node_rrn, FILE* file, IndexElement index_element) {
     ex_assert(current_node_rrn < index_header->proxRRN, EX_GENERIC_ERROR);
 
@@ -352,7 +285,6 @@ BTreeIndexInsertResponse b_tree_index_insert(BTreeIndexHeader* index_header, BTr
     // State tracking
     BTreeIndexInsertResponse response = {false, {{-1, -1}, -1}};
     BTreeIndexNode* current_node = NULL;
-    bool modified = false;
 
     // Load target node
     if (current_node_rrn == index_header->no_raiz) {
@@ -414,7 +346,11 @@ BTreeIndexInsertResponse b_tree_index_insert(BTreeIndexHeader* index_header, BTr
 
                 // Change root referencess
                 index_header->root_node_ref = new_root;
-                current_node->tipoNo = LEAF_NODE;
+                if (b_tree_node_is_leaf(index_header, current_node)) {
+                    current_node->tipoNo = LEAF_NODE;
+                } else {
+                    current_node->tipoNo = MIDDLE_NODE;
+                }
             }
 
             // Create split
@@ -466,7 +402,285 @@ BTreeIndexInsertResponse b_tree_index_insert(BTreeIndexHeader* index_header, BTr
     return response;
 }
 
+/////////////////////////////
+// Public index operations //
+/////////////////////////////
+
+/**
+ * Search for a given ID in the index
+ * @param index_header target index header
+ * @param id target id
+ * @return the index element (id will be -1 if not found)
+ */
+IndexElement b_tree_index_query(BTreeIndexHeader* index_header, FILE* file, int32_t id) {
+    return (IndexElement) {-1, -1};
+}
+
+/**
+ * Insert a new id into the index
+ * @param index_header target index header
+ * @param id target id
+ * @param reference id's reference (RRN or byte offset)
+ * @return if the id was inserted in the index (false indicates its already present)
+ */
 bool b_tree_index_add(BTreeIndexHeader* index_header, FILE* file, int32_t id, int64_t reference) {
     BTreeIndexInsertResponse response = b_tree_index_insert(index_header, NULL, -1, file, (IndexElement){id, reference});
     return !response.conflict;
+}
+
+/**
+ * Removes the given id from index
+ * @param index_header target index header
+ * @param id target id
+ * @return if the id was found and removed
+ */
+bool b_tree_index_remove(BTreeIndexHeader* index_header, FILE* file, int32_t id) {
+    return false;
+}
+
+/**
+ * Update and existing id's reference on the index
+ * @param index_header target index header
+ * @param id target id
+ * @param reference new id's reference
+ * @return if the index was updated (false indicates id was not found)
+ */
+bool b_tree_index_update(BTreeIndexHeader* index_header, FILE* file, int32_t id, int64_t reference) {
+    return false;
+}
+
+//////////////
+// File I/O //
+//////////////
+
+/**
+ * Write entire index into the target file
+ * @param index_header target index header
+ * @param dest destination file
+ * @return amount of bytes written
+ */
+size_t write_b_tree_index(BTreeIndexHeader* index_header, FILE* dest) {
+    ex_assert(index_header != NULL, EX_CORRUPTED_REGISTRY);
+    ex_assert(dest != NULL, EX_FILE_ERROR);
+
+    size_t written_bytes = 0;
+
+    // Write header
+    seek_b_tree_node(index_header, dest, -1);
+    written_bytes += write_b_tree_index_header(index_header, dest);
+
+    // Write root node if present
+    if (index_header->root_node_ref != NULL) {
+        seek_b_tree_node(index_header, dest, index_header->root_node_ref->rrn);
+        written_bytes += write_b_tree_index_node(index_header, index_header->root_node_ref, dest);
+    }
+
+    return written_bytes;
+}
+
+/**
+ * Read index from the target file
+ * @param index_header target index header
+ * @param src source file
+ * @return amount of bytes read
+ */
+size_t read_b_tree_index(BTreeIndexHeader* index_header, FILE* src) {
+    ex_assert(index_header != NULL, EX_CORRUPTED_REGISTRY);
+    ex_assert(src != NULL, EX_FILE_ERROR);
+
+    size_t read_bytes = 0;
+
+    // Read header
+    seek_b_tree_node(index_header, src, -1);
+    read_bytes += read_b_tree_index_header(index_header, src);
+
+    return read_bytes;
+
+}
+
+/**
+ * Write index header into the target file
+ * @param index_header target index header
+ * @param dest destination file
+ * @return amount of bytes written
+ */
+size_t write_b_tree_index_header(BTreeIndexHeader* index_header, FILE* dest) {
+    ex_assert(index_header != NULL, EX_CORRUPTED_REGISTRY);
+    ex_assert(dest != NULL, EX_FILE_ERROR);
+
+    size_t written_bytes = 0;
+    written_bytes += fwrite_member_field(index_header, status, dest);
+    written_bytes += fwrite_member_field(index_header, no_raiz, dest);
+    written_bytes += fwrite_member_field(index_header, proxRRN, dest);
+    written_bytes += fwrite_member_field(index_header, nroNos, dest);
+
+    ex_assert(written_bytes == BTREE_HEADER_FIXED_SIZE, EX_FILE_ERROR);
+
+    // Fill the remainder of the page with filler bytes
+    written_bytes += fill_bytes(index_header->page_size - written_bytes, dest);
+    return written_bytes;
+}
+
+/**
+ * Read index header from the target file
+ * @param index_header target index header
+ * @param src source file
+ * @return amount of bytes read
+ */
+size_t read_b_tree_index_header(BTreeIndexHeader* index_header, FILE* src) {
+    ex_assert(index_header != NULL, EX_CORRUPTED_REGISTRY);
+    ex_assert(src != NULL, EX_FILE_ERROR);
+
+    // Ensure that the root node ref will be invalidated, if present
+    destroy_b_tree_index_node(index_header->root_node_ref);
+    index_header->root_node_ref = NULL;
+
+    // Read B-Tree header fields
+    size_t read_bytes = 0;
+
+    read_bytes += fread_member_field(index_header, status, src);
+    read_bytes += fread_member_field(index_header, no_raiz, src);
+    read_bytes += fread_member_field(index_header, proxRRN, src);
+    read_bytes += fread_member_field(index_header, nroNos, src);
+
+    // Go to the next disk page
+    seek_b_tree_node(index_header, src, 0);
+
+    return read_bytes;
+}
+
+/**
+ * Write index element into the target file
+ * @param index_header target index header
+ * @param index_element target index element
+ * @param dest destination file
+ * @return amount of bytes written
+ */
+size_t write_b_tree_index_node(BTreeIndexHeader* index_header, BTreeIndexNode* index_node, FILE* dest) {
+    ex_assert(index_header != NULL, EX_CORRUPTED_REGISTRY);
+    ex_assert(index_node != NULL, EX_CORRUPTED_REGISTRY);
+    ex_assert(dest != NULL, EX_FILE_ERROR);
+
+    ex_assert(index_node->nroChaves <= index_header->degree, EX_CORRUPTED_REGISTRY);
+
+    size_t written_bytes = 0;
+
+    // Write node metadata
+    written_bytes += fwrite_member_field(index_node, tipoNo, dest);
+    written_bytes += fwrite_member_field(index_node, nroChaves, dest);
+
+    // Write elements
+    for (uint32_t i = 0; i < index_header->degree - 1; i++) {
+        // Fill empty elements with NULL indicator
+        if (i >= index_node->nroChaves) {
+            index_node->elements[i].id = -1;
+            index_node->elements[i].reference = -1;
+        }
+
+        // Write ID
+        written_bytes += fwrite_member_field(&index_node->elements[i], id, dest);
+
+        // Write reference
+        if (index_header->registry_type == RT_FIX_LEN) {
+            int32_t reference = (int32_t) index_node->elements[i].reference;
+            written_bytes += fwrite(&reference, 1, sizeof(reference), dest);
+        } else {
+            written_bytes += fwrite_member_field(&index_node->elements[i], reference, dest);
+        }
+    }
+
+    // Write edge references
+    for (uint32_t i = 0; i < index_header->degree; i++) {
+        written_bytes += fwrite(&index_node->edges[i], 1, sizeof(index_node->edges[i]), dest);
+    }
+
+    // Shouldn't actually be used, since page_size - written_bytes will always be 0, but just for completioness
+    written_bytes += fill_bytes(index_header->page_size - written_bytes, dest);
+
+    return written_bytes;
+}
+
+/**
+ * Read index element from the target file
+ * @param index_header target index header
+ * @param index_element target index element
+ * @param src source file
+ * @return amount of bytes read
+ */
+size_t read_b_tree_index_node(BTreeIndexHeader* index_header, BTreeIndexNode* index_node, FILE* src) {
+    ex_assert(index_header != NULL, EX_CORRUPTED_REGISTRY);
+    ex_assert(index_node != NULL, EX_CORRUPTED_REGISTRY);
+    ex_assert(src != NULL, EX_FILE_ERROR);
+
+    int32_t rrn = get_current_b_tree_rrn(index_header, src);
+    index_node->rrn = rrn;
+
+    size_t read_bytes = 0;
+
+    // Read node metadata
+    read_bytes += fread_member_field(index_node, tipoNo, src);
+    read_bytes += fread_member_field(index_node, nroChaves, src);
+
+    // Read elements
+    for (uint32_t i = 0; i < index_header->degree - 1; i++) {
+        // Write ID
+        read_bytes += fread_member_field(&index_node->elements[i], id, src);
+
+        // Write reference
+        if (index_header->registry_type == RT_FIX_LEN) {
+            int32_t reference;
+            read_bytes += fread(&reference, 1, sizeof(reference), src);
+            index_node->elements[i].reference = reference;
+        } else {
+            read_bytes += fread_member_field(&index_node->elements[i], reference, src);
+        }
+
+        // Fill empty elements with NULL indicator
+        if (i >= index_node->nroChaves) {
+            index_node->elements[i].id = -1;
+            index_node->elements[i].reference = -1;
+        }
+    }
+
+    // Read edge references
+    for (uint32_t i = 0; i < index_header->degree; i++) {
+        read_bytes += fread(&index_node->edges[i], 1, sizeof(index_node->edges[i]), src);
+    }
+
+    return read_bytes;
+}
+
+/////////////////
+// Index utils //
+/////////////////
+
+/**
+ * Update index status (memory only)
+ * @param index_header target index header
+ * @param status new status
+ */
+void set_b_tree_index_status(BTreeIndexHeader* index_header, char status) {
+    index_header->status = status;
+}
+
+/**
+ * Get index status (from memory)
+ * @param index_header target index header
+ * @return index status
+ */
+char get_b_tree_index_status(BTreeIndexHeader* index_header) {
+    return index_header->status;
+}
+
+/**
+ * Write index status (only the status) to the file
+ * @param index_header target index header
+ * @param file target file
+ */
+void write_b_tree_index_status(BTreeIndexHeader* index_header, FILE* file) {
+    ex_assert(index_header != NULL, EX_CORRUPTED_REGISTRY);
+    ex_assert(file != NULL, EX_FILE_ERROR);
+
+    seek_b_tree_node(index_header, file, -1);
+    fwrite_member_field(index_header, status, file);
 }

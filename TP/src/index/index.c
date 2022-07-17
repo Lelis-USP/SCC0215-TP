@@ -3,13 +3,18 @@
 */
 
 #include "index.h"
+#include "linear_index.h"
+#include "btree_index.h"
 
 #include <stdlib.h>
 
 #include "../exception/exception.h"
 #include "../struct/common.h"
 
+///////////////////////
 // Memory management //
+///////////////////////
+
 /**
  * Allocate and setup new index header
  * @return the allocated header
@@ -17,12 +22,9 @@
 IndexHeader* new_index_header() {
     IndexHeader* index_header = malloc(sizeof (struct IndexHeader));
 
-    index_header->status = STATUS_GOOD;
-    index_header->sorted = true;
-    index_header->registry_type = UNKNOWN;
-    index_header->index_pool = NULL;
-    index_header->pool_size = 0;
-    index_header->pool_used = 0;
+    index_header->index_type = IT_UNKNOWN;
+    index_header->header = NULL;
+    index_header->file = NULL;
 
     return index_header;
 }
@@ -36,8 +38,18 @@ void destroy_index_header(IndexHeader* index_header) {
         return;
     }
 
+    switch (index_header->index_type) {
+        case IT_LINEAR:
+            destroy_linear_index_header(index_header->header);
+            break;
+        case IT_B_TREE:
+            destroy_b_tree_index_header(index_header->header);
+            break;
+        default:
+            free(index_header->header);
+    }
+
     // Free the pool itself
-    free(index_header->index_pool);
     free(index_header);
 }
 
@@ -46,146 +58,45 @@ void destroy_index_header(IndexHeader* index_header) {
  * @param registry_type target registry type
  * @return the allocated index
  */
-IndexHeader* new_index(RegistryType registry_type) {
+IndexHeader* new_index(RegistryType registry_type, IndexType index_type) {
     IndexHeader* index_header = new_index_header();
-    index_header->registry_type = registry_type;
+
+    index_header->index_type = index_type;
+    switch (index_type) {
+        case IT_LINEAR:
+            index_header->header = new_linear_index(registry_type);
+            break;
+        case IT_B_TREE:
+            index_header->header = new_b_tree_index(registry_type);
+            break;
+        default:
+            index_header->index_type = IT_UNKNOWN;
+    }
+
     return index_header;
 }
 
-/**
- * Reserve a new position in the index pool (increases the pool_used and, if needed, the pool size)
- * @param index_header target index header
- * @return the index of the new allocated position (pool_used - 1)
- */
-uint32_t reserve_pool_position(IndexHeader* index_header){
-    // There is still space on the pool
-    if (index_header->pool_used < index_header->pool_size) {
-        index_header->pool_used++;
-        return index_header->pool_used - 1;
-    }
-
-    // First pool reservation
-    if (index_header->index_pool == NULL) {
-        index_header->index_pool = calloc(INITIAL_POOL_SIZE, sizeof (struct IndexElement));
-        index_header->pool_size = INITIAL_POOL_SIZE;
-        index_header->pool_used = 1;
-        return 0;
-    }
-
-    // Extend pool size (using exponential approach)
-    IndexElement* new_pool = realloc(index_header->index_pool, index_header->pool_size * POOL_SCALING_FACTOR * sizeof (struct IndexElement));
-
-    if (new_pool == NULL) {
-        ex_raise(EX_MEMORY_ERROR);
-        return UINT32_MAX;
-    }
-
-    index_header->index_pool = new_pool;
-    index_header->pool_size *= POOL_SCALING_FACTOR;
-    index_header->pool_used += 1;
-    return index_header->pool_used - 1;
-}
-
-// Index opertaions //
+///////////////////////
+// Index operations //
+//////////////////////
 
 /**
  * Search for a given ID in the index
  * @param index_header target index header
  * @param id target id
- * @return the reference if found (return UINT32_MAX if not found)
+ * @return the index element (id will be -1 if not found)
  */
-uint32_t index_find(IndexHeader* index_header, int32_t id) {
-    if (index_header->pool_used == 0) {
-        return UINT32_MAX;
+IndexElement index_query(IndexHeader* index_header, int32_t id) {
+    switch (index_header->index_type) {
+        case IT_LINEAR:
+            return linear_index_query((LinearIndexHeader*) index_header->header, id);
+        case IT_B_TREE:
+            return b_tree_index_query((BTreeIndexHeader*) index_header->header, index_header->file, id);
+        default:
+            ex_raise(EX_CORRUPTED_REGISTRY);
     }
 
-    // Guarantee index is sorted
-    if (!index_header->sorted) {
-        index_sort(index_header);
-    }
-
-    // Binary search the id
-    int64_t low, high;
-    low = 0;
-    high = index_header->pool_used - 1;
-
-    while (low <= high) {
-        int64_t mid = (high + low) / 2;
-
-        if (index_header->index_pool[mid].id == id) {
-            low = high = mid;
-            break;
-        }
-
-        if (index_header->index_pool[mid].id < id) {
-            low = mid + 1;
-        } else {
-            high = mid - 1;
-        }
-    }
-
-    if (low < index_header->pool_used && index_header->index_pool[low].id == id) {
-        return low;
-    }
-
-    return UINT32_MAX;
-}
-
-/**
- * Search for a given ID in the index
- * @param index_header target index header
- * @param id target id
- * @return the index element if found (or else, NULL)
- */
-IndexElement* index_query(IndexHeader* index_header, int32_t id) {
-    uint32_t idx = index_find(index_header, id);
-
-    // Not found
-    if (idx == UINT32_MAX) {
-        return NULL;
-    }
-
-    return &index_header->index_pool[idx];
-}
-
-/**
- * Removes the given id from index
- * @param index_header target index header
- * @param id target id
- * @return if the id was found and removed
- */
-bool index_remove(IndexHeader* index_header, int32_t id) {
-    uint32_t idx = index_find(index_header, id);
-
-    // Not found
-    if (idx == UINT32_MAX) {
-        return false;
-    }
-
-    // Should always be false
-    if (!index_header->sorted) {
-        uint32_t last = index_header->pool_used - 1;
-        index_header->pool_used--;
-
-        if (idx != last) {
-            index_header->index_pool[idx] = index_header->index_pool[last];
-        }
-    } else {
-        // Remove with shifting
-        uint32_t last = index_header->pool_used - 1;
-        index_header->pool_used--;
-
-        for (uint32_t i = idx; i < last; i++) {
-            // Swap current element with the next one
-            IndexElement tmp = index_header->index_pool[i];
-            index_header->index_pool[i] = index_header->index_pool[i + 1];
-            index_header->index_pool[i + 1] = tmp;
-        }
-    }
-
-    index_header->sorted = false;
-
-    return true;
+    return (IndexElement){-1, -1};
 }
 
 /**
@@ -196,34 +107,35 @@ bool index_remove(IndexHeader* index_header, int32_t id) {
  * @return if the id was inserted in the index (false indicates its already present)
  */
 bool index_add(IndexHeader* index_header, int32_t id, int64_t reference) {
-    ex_assert(index_header != NULL, EX_GENERIC_ERROR);
-    ex_assert(index_header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
-
-    IndexElement* match = index_query(index_header, id);
-
-    if (match != NULL) {
-        return false;
+    switch (index_header->index_type) {
+        case IT_LINEAR:
+            return linear_index_add((LinearIndexHeader*) index_header->header, id, reference);
+        case IT_B_TREE:
+            return b_tree_index_add((BTreeIndexHeader*) index_header->header, index_header->file,id, reference);
+        default:
+            ex_raise(EX_CORRUPTED_REGISTRY);
     }
 
-    uint32_t insertion_pos = reserve_pool_position(index_header);
-    index_header->index_pool[insertion_pos].id = id;
-    index_header->index_pool[insertion_pos].reference = reference;
+    return false;
+}
 
-    // Insertion sort the new element
-    if (index_header->sorted) {
-        for (uint32_t i = insertion_pos; i > 0; i--) {
-            // Swap elements if out of order
-            if (index_header->index_pool[i].id < index_header->index_pool[i - 1].id) {
-                IndexElement tmp = index_header->index_pool[i];
-                index_header->index_pool[i] = index_header->index_pool[i - 1];
-                index_header->index_pool[i - 1] = tmp;
-            } else {
-                break ;
-            }
-        }
+/**
+ * Removes the given id from index
+ * @param index_header target index header
+ * @param id target id
+ * @return if the id was found and removed
+ */
+bool index_remove(IndexHeader* index_header, int32_t id) {
+    switch (index_header->index_type) {
+        case IT_LINEAR:
+            return linear_index_remove((LinearIndexHeader*) index_header->header, id);
+        case IT_B_TREE:
+            return b_tree_index_remove((BTreeIndexHeader*) index_header->header, index_header->file, id);
+        default:
+            ex_raise(EX_CORRUPTED_REGISTRY);
     }
 
-    return true;
+    return false;
 }
 
 /**
@@ -234,84 +146,21 @@ bool index_add(IndexHeader* index_header, int32_t id, int64_t reference) {
  * @return if the index was updated (false indicates id was not found)
  */
 bool index_update(IndexHeader* index_header, int32_t id, int64_t reference) {
-    ex_assert(index_header != NULL, EX_GENERIC_ERROR);
-    ex_assert(index_header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
-
-    IndexElement* match = index_query(index_header, id);
-
-    if (match == NULL) {
-        return false;
+    switch (index_header->index_type) {
+        case IT_LINEAR:
+            return linear_index_update((LinearIndexHeader*) index_header->header, id, reference);
+        case IT_B_TREE:
+            return b_tree_index_update((BTreeIndexHeader*) index_header->header, index_header->file,id, reference);
+        default:
+            ex_raise(EX_CORRUPTED_REGISTRY);
     }
 
-    match->reference = reference;
-
-    return true;
+    return false;
 }
 
-/**
- * Quick sort recursive implementation to sort the index
- *
- * Uses random pivoting
- * @param arr index element arr being sorted
- * @param low current low-end (inclusive)
- * @param high current high-end (inclusive)
- */
-void index_qsort(IndexElement arr[], uint32_t low, uint32_t high) {
-    if (low >= high) {
-        return;
-    }
-
-    // Partitioning
-    uint32_t pivot_index = low + rand() % (high - low);
-    int32_t pivot = arr[pivot_index].id;
-
-    // Move pivot to the end
-    IndexElement tmp = arr[high];
-    arr[high] = arr[pivot_index];
-    arr[pivot_index] = tmp;
-
-    // Swap elements smaller than the pivot with the known first element greater than the pivot
-    uint32_t partition_idx = low;
-    for (uint32_t i = low; i < high; i++) {
-        if (arr[i].id <= pivot) {
-            tmp = arr[i];
-            arr[i] = arr[partition_idx];
-            arr[partition_idx] = tmp;
-            partition_idx++;
-        }
-    }
-
-    // Swap pivot with the first element greater than it
-    tmp = arr[partition_idx];
-    arr[partition_idx] = arr[high];
-    arr[high] = tmp;
-
-    // Prevent unsigned underflow
-    if (partition_idx != 0) {
-        index_qsort(arr, low, partition_idx - 1);
-    }
-
-    index_qsort(arr, partition_idx + 1, high);
-}
-
-/**
- * Sorts the index for further searches
- * @param index_header target index header
- */
-void index_sort(IndexHeader* index_header) {
-    if (index_header->sorted) {
-        return;
-    }
-
-    // If used size is 0, no need to sort (it woul also cause an awful overflow)
-    if (index_header->pool_used != 0) {
-        index_qsort(index_header->index_pool, 0, index_header->pool_used - 1);
-    }
-
-    index_header->sorted = true;
-}
-
+//////////////
 // File I/O //
+//////////////
 
 /**
  * Write entire index into the target file
@@ -323,20 +172,18 @@ size_t write_index(IndexHeader* index_header, FILE* dest) {
     ex_assert(index_header != NULL, EX_GENERIC_ERROR);
     ex_assert(dest != NULL, EX_FILE_ERROR);
 
-    if (!index_header->sorted) {
-        index_sort(index_header);
+    fseek(dest, 0, SEEK_SET);
+
+    switch (index_header->index_type) {
+        case IT_LINEAR:
+            return write_linear_index((LinearIndexHeader*) index_header->header, dest);
+        case IT_B_TREE:
+            return write_b_tree_index((BTreeIndexHeader*) index_header->header, dest);
+        default:
+            ex_raise(EX_CORRUPTED_REGISTRY);
     }
 
-    size_t written_bytes = 0;
-
-    write_index_header(index_header, dest);
-
-    // Write element by element
-    for (uint32_t i = 0; i < index_header->pool_used; i++) {
-        write_index_element(index_header, &index_header->index_pool[i], dest);
-    }
-
-    return written_bytes;
+    return 0;
 }
 
 /**
@@ -349,128 +196,40 @@ size_t read_index(IndexHeader* index_header, FILE* src) {
     ex_assert(index_header != NULL, EX_GENERIC_ERROR);
     ex_assert(src != NULL, EX_FILE_ERROR);
 
-    size_t read_bytes = 0;
+    index_header->file = src;
 
-    read_bytes += read_index_header(index_header, src);
-
-    // Don't read elements in case of bad status
-    if (index_header->status == STATUS_BAD) {
-        return read_bytes;
+    switch (index_header->index_type) {
+        case IT_LINEAR:
+            return read_linear_index((LinearIndexHeader*) index_header->header, src);
+        case IT_B_TREE:
+            return read_b_tree_index((BTreeIndexHeader*) index_header->header, src);
+        default:
+            ex_raise(EX_CORRUPTED_REGISTRY);
     }
 
-    // Load index elements
-    while (!feof(src)) {
-        uint32_t insertion_pos = reserve_pool_position(index_header);
-        size_t last_read_bytes = read_index_element(index_header, &index_header->index_pool[insertion_pos], src);
-        read_bytes += last_read_bytes;
-
-        // Failed to completely read last element
-        if (last_read_bytes < MIN_ELEMENT_SIZE) {
-            index_header->pool_used--;
-            break;
-        }
-    }
-
-    index_header->sorted = true;
-
-    return read_bytes;
+    return 0;
 }
 
-/**
- * Write index header into the target file
- * @param index_header target index header
- * @param dest destination file
- * @return amount of bytes written
- */
-size_t write_index_header(IndexHeader* index_header, FILE* dest) {
-    ex_assert(index_header != NULL, EX_GENERIC_ERROR);
-    ex_assert(dest != NULL, EX_FILE_ERROR);
+/////////////////
+// Index utils //
+/////////////////
 
-    size_t written_bytes = 0;
-
-    written_bytes += fwrite_member_field(index_header, status, dest);
-
-    return written_bytes;
-}
-
-/**
- * Read index header from the target file
- * @param index_header target index header
- * @param src source file
- * @return amount of bytes read
- */
-size_t read_index_header(IndexHeader* index_header, FILE* src) {
-    ex_assert(index_header != NULL, EX_GENERIC_ERROR);
-    ex_assert(src != NULL, EX_FILE_ERROR);
-
-    size_t read_bytes = 0;
-
-    read_bytes += fread_member_field(index_header, status, src);
-
-    return read_bytes;
-}
-
-/**
- * Write index element into the target file
- * @param index_header target index header
- * @param index_element target index element
- * @param dest destination file
- * @return amount of bytes written
- */
-size_t write_index_element(IndexHeader* index_header, IndexElement* index_element, FILE* dest) {
-    ex_assert(index_header != NULL, EX_GENERIC_ERROR);
-    ex_assert(index_element != NULL, EX_GENERIC_ERROR);
-    ex_assert(dest != NULL, EX_FILE_ERROR);
-
-    size_t written_bytes = 0;
-
-    written_bytes += fwrite_member_field(index_element, id, dest);
-
-    if (index_header->registry_type == FIX_LEN) {
-        uint32_t four_bit_value = index_element->reference;
-        written_bytes += fwrite(&four_bit_value, 1, sizeof(uint32_t), dest);
-    } else {
-        written_bytes += fwrite_member_field(index_element, reference, dest);
-    }
-
-    return written_bytes;
-}
-
-/**
- * Read index element from the target file
- * @param index_header target index header
- * @param index_element target index element
- * @param src source file
- * @return amount of bytes read
- */
-size_t read_index_element(IndexHeader* index_header, IndexElement* index_element, FILE* src) {
-    ex_assert(index_header != NULL, EX_GENERIC_ERROR);
-    ex_assert(index_element != NULL, EX_GENERIC_ERROR);
-    ex_assert(src != NULL, EX_FILE_ERROR);
-
-    size_t read_bytes = 0;
-
-    read_bytes += fread_member_field(index_element, id, src);
-
-    if (index_header->registry_type == FIX_LEN) {
-        uint32_t four_bit_value;
-        read_bytes += fread(&four_bit_value, 1, sizeof(uint32_t), src);
-        index_element->reference = four_bit_value;
-    } else {
-        read_bytes += fread_member_field(index_element, reference, src);
-    }
-
-    return read_bytes;
-}
-
-// Index info //
 /**
  * Update index status (memory only)
  * @param index_header target index header
  * @param status new status
  */
 void set_index_status(IndexHeader* index_header, char status) {
-    index_header->status = status;
+    switch (index_header->index_type) {
+        case IT_LINEAR:
+            set_linear_index_status((LinearIndexHeader*) index_header->header, status);
+            break;
+        case IT_B_TREE:
+            set_b_tree_index_status((BTreeIndexHeader*) index_header->header, status);
+            break;
+        default:
+            ex_raise(EX_CORRUPTED_REGISTRY);
+    }
 }
 
 /**
@@ -479,6 +238,50 @@ void set_index_status(IndexHeader* index_header, char status) {
  * @return index status
  */
 char get_index_status(IndexHeader* index_header) {
-    return index_header->status;
+    switch (index_header->index_type) {
+        case IT_LINEAR:
+            return get_linear_index_status((LinearIndexHeader*) index_header->header);
+        case IT_B_TREE:
+            return get_b_tree_index_status((BTreeIndexHeader*) index_header->header);
+        default:
+            ex_raise(EX_CORRUPTED_REGISTRY);
+    }
+
+    return STATUS_BAD;
 }
 
+/**
+ * Write index status (only the status) to the file
+ * @param index_header target index header
+ * @param file target file
+ */
+void write_index_status(IndexHeader* index_header, FILE* file) {
+    switch (index_header->index_type) {
+        case IT_LINEAR:
+            write_linear_index_status((LinearIndexHeader*) index_header->header, file);
+            break;
+        case IT_B_TREE:
+            write_b_tree_index_status((BTreeIndexHeader*) index_header->header, file);
+            break;
+        default:
+            ex_raise(EX_CORRUPTED_REGISTRY);
+    }
+}
+
+/**
+ * Update the file associated to the index (used for internal operations)
+ * @param index_header target index header
+ * @param file new index file (the previou won't be closed nor be touched in any way)
+ */
+void set_index_file(IndexHeader* index_header, FILE* file) {
+    index_header->file = file;
+}
+
+/**
+ * Retrieve the current file associated to the index
+ * @param index_header target index header
+ * @return the file associated to the index (might be NULL)
+ */
+FILE* get_index_file(IndexHeader* index_header) {
+    return index_header->file;
+}

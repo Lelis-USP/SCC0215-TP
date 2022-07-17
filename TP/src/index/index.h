@@ -8,26 +8,41 @@
 
 #include "../struct/registry.h"
 
+/////////////
+// Configs //
+/////////////
+
+// The minimum size of an index element
+#define MIN_ELEMENT_SIZE 8
+
+/////////////////////////////
+// Data structures & types //
+/////////////////////////////
+
+// Index element (key-value pair)
 typedef struct IndexElement {
     int32_t id;
     int64_t reference; // Might be an RRN (32bit) or a byte offset (64bit)
 } IndexElement;
 
+// Index types
+typedef enum IndexType {
+    IT_UNKNOWN,
+    IT_LINEAR,
+    IT_B_TREE
+} IndexType;
+
+// Shared index header structure
 typedef struct IndexHeader {
-    char status;
-    bool sorted;
-    RegistryType registry_type;
-    IndexElement* index_pool;
-    uint32_t pool_size;
-    uint32_t pool_used;
+    IndexType index_type;
+    void* header;
+    FILE* file;
 } IndexHeader;
 
-// Index pool initial size
-#define INITIAL_POOL_SIZE 512
-#define POOL_SCALING_FACTOR 2
-#define MIN_ELEMENT_SIZE 8
 
+///////////////////////
 // Memory management //
+///////////////////////
 
 /**
  * Allocate and setup new index header
@@ -46,9 +61,11 @@ void destroy_index_header(IndexHeader* index_header);
  * @param registry_type target registry type
  * @return the allocated index
  */
-IndexHeader* new_index(RegistryType registry_type);
+IndexHeader* new_index(RegistryType registry_type, IndexType index_type);
 
-// Index opertaions //
+///////////////////////
+// Index operations //
+//////////////////////
 
 /**
  * Search for a given ID in the index
@@ -56,15 +73,7 @@ IndexHeader* new_index(RegistryType registry_type);
  * @param id target id
  * @return the index element if found (or else, NULL)
  */
-IndexElement* index_query(IndexHeader* index_header, int32_t id);
-
-/**
- * Removes the given id from index
- * @param index_header target index header
- * @param id target id
- * @return if the id was found and removed
- */
-bool index_remove(IndexHeader* index_header, int32_t id);
+IndexElement index_query(IndexHeader* index_header, int32_t id);
 
 /**
  * Insert a new id into the index
@@ -76,6 +85,14 @@ bool index_remove(IndexHeader* index_header, int32_t id);
 bool index_add(IndexHeader* index_header, int32_t id, int64_t reference);
 
 /**
+ * Removes the given id from index
+ * @param index_header target index header
+ * @param id target id
+ * @return if the id was found and removed
+ */
+bool index_remove(IndexHeader* index_header, int32_t id);
+
+/**
  * Update and existing id's reference on the index
  * @param index_header target index header
  * @param id target id
@@ -84,13 +101,9 @@ bool index_add(IndexHeader* index_header, int32_t id, int64_t reference);
  */
 bool index_update(IndexHeader* index_header, int32_t id, int64_t reference);
 
-/**
- * Sorts the index for further searches
- * @param index_header target index header
- */
-void index_sort(IndexHeader* index_header);
-
+//////////////
 // File I/O //
+//////////////
 
 /**
  * Write entire index into the target file
@@ -101,48 +114,16 @@ void index_sort(IndexHeader* index_header);
 size_t write_index(IndexHeader* index_header, FILE* dest);
 
 /**
- * Read entire index from the target file
+ * Read index from the target file
  * @param index_header target index header
  * @param src source file
  * @return amount of bytes read
  */
 size_t read_index(IndexHeader* index_header, FILE* src);
 
-/**
- * Write index header into the target file
- * @param index_header target index header
- * @param dest destination file
- * @return amount of bytes written
- */
-size_t write_index_header(IndexHeader* index_header, FILE* dest);
-
-/**
- * Read index header from the target file
- * @param index_header target index header
- * @param src source file
- * @return amount of bytes read
- */
-size_t read_index_header(IndexHeader* index_header, FILE* src);
-
-/**
- * Write index element into the target file
- * @param index_header target index header
- * @param index_element target index element
- * @param dest destination file
- * @return amount of bytes written
- */
-size_t write_index_element(IndexHeader* index_header, IndexElement* index_element, FILE* dest);
-
-/**
- * Read index element from the target file
- * @param index_header target index header
- * @param index_element target index element
- * @param src source file
- * @return amount of bytes read
- */
-size_t read_index_element(IndexHeader* index_header, IndexElement* index_element, FILE* src);
-
-// Index info //
+/////////////////
+// Index utils //
+/////////////////
 
 /**
  * Update index status (memory only)
@@ -158,3 +139,23 @@ void set_index_status(IndexHeader* index_header, char status);
  */
 char get_index_status(IndexHeader* index_header);
 
+/**
+ * Write index status (only the status) to the file
+ * @param index_header target index header
+ * @param file target file
+ */
+void write_index_status(IndexHeader* index_header, FILE* file);
+
+/**
+ * Update the file associated to the index (used for internal operations)
+ * @param index_header target index header
+ * @param file new index file (the previou won't be closed nor be touched in any way)
+ */
+void set_index_file(IndexHeader* index_header, FILE* file);
+
+/**
+ * Retrieve the current file associated to the index
+ * @param index_header target index header
+ * @return the file associated to the index (might be NULL)
+ */
+FILE* get_index_file(IndexHeader* index_header);

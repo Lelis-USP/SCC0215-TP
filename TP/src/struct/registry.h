@@ -10,12 +10,12 @@
 #include "registry_content.h"
 
 /**
- * Current availables registry types, in case of undefinied type, use UNKNOWN
+ * Current availables registry types, in case of undefinied type, use RT_UNKNOWN
  */
 typedef enum RegistryType {
-    UNKNOWN = 0,
-    FIX_LEN = 1,
-    VAR_LEN = 2
+    RT_UNKNOWN = 0,
+    RT_FIX_LEN = 1,
+    RT_VAR_LEN = 2
 } RegistryType;
 
 /**

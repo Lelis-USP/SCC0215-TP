@@ -9,7 +9,7 @@
 #include "../exception/exception.h"
 
 /**
- * Writes the given header (of type FIX_LEN) into the target file
+ * Writes the given header (of type RT_FIX_LEN) into the target file
  * @param header header to be written
  * @param dest destination file
  * @return the amount of bytes written
@@ -19,7 +19,7 @@ size_t t1_write_header(Header* header, FILE* dest) {
     ex_assert(header != NULL, EX_GENERIC_ERROR);
     ex_assert(header->header_content != NULL, EX_GENERIC_ERROR);
     ex_assert(header->header_metadata != NULL, EX_GENERIC_ERROR);
-    ex_assert(header->registry_type == FIX_LEN, EX_GENERIC_ERROR);
+    ex_assert(header->registry_type == RT_FIX_LEN, EX_GENERIC_ERROR);
     ex_assert(dest != NULL, EX_FILE_ERROR);
 
     T1HeaderMetadata* metadata = header->header_metadata;
@@ -43,7 +43,7 @@ size_t t1_write_header(Header* header, FILE* dest) {
 }
 
 /**
- * Reads the given header (of type FIX_LEN) from the target file
+ * Reads the given header (of type RT_FIX_LEN) from the target file
  * @param header header to be read into
  * @param src source file
  * @return the amount of bytes read
@@ -52,7 +52,7 @@ size_t t1_read_header(Header* header, FILE* src) {
     ex_assert(header != NULL, EX_GENERIC_ERROR);
     ex_assert(header->header_content != NULL, EX_GENERIC_ERROR);
     ex_assert(header->header_metadata != NULL, EX_GENERIC_ERROR);
-    ex_assert(header->registry_type == FIX_LEN, EX_GENERIC_ERROR);
+    ex_assert(header->registry_type == RT_FIX_LEN, EX_GENERIC_ERROR);
     ex_assert(src != NULL, EX_FILE_ERROR);
 
     T1HeaderMetadata *metadata = header->header_metadata;
@@ -75,7 +75,7 @@ size_t t1_read_header(Header* header, FILE* src) {
 }
 
 /**
- * Writes the given registry (of type FIX_LEN) into the target file
+ * Writes the given registry (of type RT_FIX_LEN) into the target file
  * @param registry registry to be written
  * @param dest destination file
  * @return the amount of bytes written
@@ -84,7 +84,7 @@ size_t t1_write_registry(Registry* registry, FILE* dest) {
     ex_assert(registry != NULL, EX_GENERIC_ERROR);
     ex_assert(registry->registry_content != NULL, EX_GENERIC_ERROR);
     ex_assert(registry->registry_metadata != NULL, EX_GENERIC_ERROR);
-    ex_assert(registry->registry_type == FIX_LEN, EX_GENERIC_ERROR);
+    ex_assert(registry->registry_type == RT_FIX_LEN, EX_GENERIC_ERROR);
     ex_assert(dest != NULL, EX_FILE_ERROR);
 
     T1RegistryMetadata* registry_metadata = registry->registry_metadata;
@@ -113,7 +113,7 @@ size_t t1_write_registry(Registry* registry, FILE* dest) {
 }
 
 /**
- * Reads the given registry (of type FIX_LEN) from the target file
+ * Reads the given registry (of type RT_FIX_LEN) from the target file
  * @param registry registry to be read into
  * @param src source file
  * @return the amount of bytes read
@@ -122,7 +122,7 @@ size_t t1_read_registry(Registry* registry, FILE* src) {
     ex_assert(registry != NULL, EX_GENERIC_ERROR);
     ex_assert(registry->registry_content != NULL, EX_GENERIC_ERROR);
     ex_assert(registry->registry_metadata != NULL, EX_GENERIC_ERROR);
-    ex_assert(registry->registry_type == FIX_LEN, EX_GENERIC_ERROR);
+    ex_assert(registry->registry_type == RT_FIX_LEN, EX_GENERIC_ERROR);
     ex_assert(src != NULL, EX_FILE_ERROR);
 
     T1RegistryMetadata* registry_metadata = registry->registry_metadata;
@@ -151,7 +151,7 @@ size_t t1_read_registry(Registry* registry, FILE* src) {
 }
 
 /**
- * Setups the given FIX_LEN header metadata
+ * Setups the given RT_FIX_LEN header metadata
  * @param header_metadata target header metadata
  */
 void t1_setup_header_metadata(T1HeaderMetadata* header_metadata) {
@@ -162,7 +162,7 @@ void t1_setup_header_metadata(T1HeaderMetadata* header_metadata) {
 }
 
 /**
- * Setups the given FIX_LEN registry metadata
+ * Setups the given RT_FIX_LEN registry metadata
  * @param registry_metadata
  */
 void t1_setup_registry_metadata(T1RegistryMetadata* registry_metadata) {
@@ -171,7 +171,7 @@ void t1_setup_registry_metadata(T1RegistryMetadata* registry_metadata) {
 }
 
 /**
- * Allocates and setup a new FIX_LEN header metadata
+ * Allocates and setup a new RT_FIX_LEN header metadata
  * @return the allocated header metadata
  */
 T1HeaderMetadata* t1_new_header_metadata() {
@@ -181,7 +181,7 @@ T1HeaderMetadata* t1_new_header_metadata() {
 }
 
 /**
- * Allocates and setup a new FIX_LEN registry metadata
+ * Allocates and setup a new RT_FIX_LEN registry metadata
  * @return the allocated registry metadata
  */
 T1RegistryMetadata* t1_new_registry_metadata() {

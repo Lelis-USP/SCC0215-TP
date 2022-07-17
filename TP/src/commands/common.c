@@ -46,59 +46,65 @@ void destroy_command_args(CommandArgs* args) {
     free(args->secondary_file);
 
     if (args->specific_data != NULL) {
-        // RRN cleanup
-        if (args->command == DESERIALIZE_SEARCH_RRN_AND_PRINT) {
-            free(args->specific_data);
-        }
+        switch (args->command) {
+            case DESERIALIZE_FILTER_AND_PRINT:
+                destroy_filter_args((FilterArgs*) args->specific_data);
+                break;
 
-        // Filter cleanup
-        if (args->command == DESERIALIZE_FILTER_AND_PRINT) {
-            destroy_filter_args((FilterArgs*) args->specific_data);
-        }
+            case DESERIALIZE_SEARCH_RRN_AND_PRINT:
+                free(args->specific_data);
+                break;
 
-        // Removal cleanup
-        if (args->command == REMOVE_REGISTRY) {
-            RemovalArgs* removal_args = args->specific_data;
-            // Free filter chains
-            for (uint32_t i = 0; i < removal_args->n_removals; i++) {
-                RemovalTarget removal_target = removal_args->removal_targets[i];
-                destroy_filter_args(removal_target.indexed_filter_args);
-                destroy_filter_args(removal_target.unindexed_filter_args);
-            }
-            free(removal_args->removal_targets);
-            free(removal_args);
-        }
+            case REMOVE_REGISTRY_WITH_LINEAR_INDEX:
+            case REMOVE_REGISTRY_WITH_BTREE_INDEX:
+                ;
+                RemovalArgs* removal_args = args->specific_data;
+                // Free filter chains
+                for (uint32_t i = 0; i < removal_args->n_removals; i++) {
+                    RemovalTarget removal_target = removal_args->removal_targets[i];
+                    destroy_filter_args(removal_target.indexed_filter_args);
+                    destroy_filter_args(removal_target.unindexed_filter_args);
+                }
+                free(removal_args->removal_targets);
+                free(removal_args);
+                break;
 
-        // Insertion cleanup
-        if (args->command == INSERT_REGISTRY) {
-            InsertionArgs* insertion_args = args->specific_data;
+            case INSERT_REGISTRY_WITH_LINEAR_INDEX:
+            case INSERT_REGISTRY_WITH_BTREE_INDEX:
+                ;
+                InsertionArgs* insertion_args = args->specific_data;
 
-            for (uint32_t i = 0; i < insertion_args->n_insertions; i++) {
-                InsertionTarget insertion_element = insertion_args->insertion_targets[i];
-                free(insertion_element.cidade);
-                free(insertion_element.marca);
-                free(insertion_element.modelo);
-            }
+                for (uint32_t i = 0; i < insertion_args->n_insertions; i++) {
+                    InsertionTarget insertion_element = insertion_args->insertion_targets[i];
+                    free(insertion_element.cidade);
+                    free(insertion_element.marca);
+                    free(insertion_element.modelo);
+                }
 
-            free(insertion_args->insertion_targets);
-            free(insertion_args);
-        }
+                free(insertion_args->insertion_targets);
+                free(insertion_args);
+                break;
 
-        // Update cleanup
-        if (args->command == UPDATE_REGISTRY) {
-            UpdateArgs* update_args = args->specific_data;
+            case UPDATE_REGISTRY_WITH_LINEAR_INDEX:
+            case UPDATE_REGISTRY_WITH_BTREE_INDEX:
+                ;
+                UpdateArgs* update_args = args->specific_data;
 
-            for (uint32_t i = 0; i < update_args->n_updates; i++) {
-                UpdateTarget update_target = update_args->update_targets[i];
-                destroy_filter_args(update_target.indexed_filter_args);
-                destroy_filter_args(update_target.unindexed_filter_args);
-                free(update_target.cidade);
-                free(update_target.marca);
-                free(update_target.modelo);
-            }
+                for (uint32_t i = 0; i < update_args->n_updates; i++) {
+                    UpdateTarget update_target = update_args->update_targets[i];
+                    destroy_filter_args(update_target.indexed_filter_args);
+                    destroy_filter_args(update_target.unindexed_filter_args);
+                    free(update_target.cidade);
+                    free(update_target.marca);
+                    free(update_target.modelo);
+                }
 
-            free(update_args->update_targets);
-            free(update_args);
+                free(update_args->update_targets);
+                free(update_args);
+                break;
+
+            default:
+                break;
         }
     }
 

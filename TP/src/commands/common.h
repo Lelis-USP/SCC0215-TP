@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include "../struct/registry.h"
+#include "../index/index.h"
 
 // Consts //
 #define MIN_COMMAND 1
@@ -17,10 +18,14 @@ enum Command {
     DESERIALIZE_AND_PRINT = 2,
     DESERIALIZE_FILTER_AND_PRINT = 3,
     DESERIALIZE_SEARCH_RRN_AND_PRINT = 4,
-    BUILD_INDEX_FROM_REGISTRY = 5,
-    REMOVE_REGISTRY = 6,
-    INSERT_REGISTRY = 7,
-    UPDATE_REGISTRY = 8
+    BUILD_LINEAR_INDEX_FROM_REGISTRY = 5,
+    REMOVE_REGISTRY_WITH_LINEAR_INDEX = 6,
+    INSERT_REGISTRY_WITH_LINEAR_INDEX = 7,
+    UPDATE_REGISTRY_WITH_LINEAR_INDEX = 8,
+    BUILD_BTREE_INDEX_FROM_REGISTRY = 9,
+    REMOVE_REGISTRY_WITH_BTREE_INDEX = 10,
+    INSERT_REGISTRY_WITH_BTREE_INDEX = 11,
+    UPDATE_REGISTRY_WITH_BTREE_INDEX = 12
 };
 
 // Field names for input parsing
@@ -37,6 +42,7 @@ static const char MODELO_FIELD_NAME[] = "modelo";
 typedef struct CommandArgs {
     enum Command command;
     RegistryType registry_type;
+    IndexType index_type;
     char* primary_file;
     char* secondary_file;
     FILE* source;

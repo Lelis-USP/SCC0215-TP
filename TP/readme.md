@@ -13,7 +13,7 @@ to-do
 - [x] Global error management
 - [ ] Auto resizing buffers
 - (Canceled) Detect column from header definitions
-- [x] Skip remaining length of VAR_LEN types to handle previously removed fields
+- [x] Skip remaining length of RT_VAR_LEN types to handle previously removed fields
 - [x] Check for missing closes and MEM leaks
 - [x] Extend documentation for new features
 - [x] How will removed var_len fields work with their registry_size??

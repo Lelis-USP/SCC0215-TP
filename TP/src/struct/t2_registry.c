@@ -10,7 +10,7 @@
 #include "../utils/utils.h"
 
 /**
- * Writes the given header (of type VAR_LEN) into the target file
+ * Writes the given header (of type RT_VAR_LEN) into the target file
  * @param header header to be written
  * @param dest destination file
  * @return the amount of bytes written
@@ -20,7 +20,7 @@ size_t t2_write_header(Header* header, FILE* dest) {
     ex_assert(header != NULL, EX_GENERIC_ERROR);
     ex_assert(header->header_content != NULL, EX_GENERIC_ERROR);
     ex_assert(header->header_metadata != NULL, EX_GENERIC_ERROR);
-    ex_assert(header->registry_type == VAR_LEN, EX_GENERIC_ERROR);
+    ex_assert(header->registry_type == RT_VAR_LEN, EX_GENERIC_ERROR);
     ex_assert(dest != NULL, EX_FILE_ERROR);
 
     T2HeaderMetadata* metadata = header->header_metadata;
@@ -44,7 +44,7 @@ size_t t2_write_header(Header* header, FILE* dest) {
 }
 
 /**
- * Reads the given header (of type VAR_LEN) from the target file
+ * Reads the given header (of type RT_VAR_LEN) from the target file
  * @param header header to be read into
  * @param src source file
  * @return the amount of bytes read
@@ -53,7 +53,7 @@ size_t t2_read_header(Header* header, FILE* src) {
     ex_assert(header != NULL, EX_GENERIC_ERROR);
     ex_assert(header->header_content != NULL, EX_GENERIC_ERROR);
     ex_assert(header->header_metadata != NULL, EX_GENERIC_ERROR);
-    ex_assert(header->registry_type == VAR_LEN, EX_GENERIC_ERROR);
+    ex_assert(header->registry_type == RT_VAR_LEN, EX_GENERIC_ERROR);
     ex_assert(src != NULL, EX_FILE_ERROR);
 
     T2HeaderMetadata* metadata = header->header_metadata;
@@ -117,7 +117,7 @@ size_t t2_minimum_registry_size(Registry* registry) {
 }
 
 /**
- * Writes the given registry (of type VAR_LEN) into the target file
+ * Writes the given registry (of type RT_VAR_LEN) into the target file
  * @param registry registry to be written
  * @param dest destination file
  * @return the amount of bytes written
@@ -126,7 +126,7 @@ size_t t2_write_registry(Registry* registry, FILE* dest) {
     ex_assert(registry != NULL, EX_GENERIC_ERROR);
     ex_assert(registry->registry_content != NULL, EX_GENERIC_ERROR);
     ex_assert(registry->registry_metadata != NULL, EX_GENERIC_ERROR);
-    ex_assert(registry->registry_type == VAR_LEN, EX_GENERIC_ERROR);
+    ex_assert(registry->registry_type == RT_VAR_LEN, EX_GENERIC_ERROR);
     ex_assert(dest != NULL, EX_FILE_ERROR);
 
     T2RegistryMetadata* registry_metadata = registry->registry_metadata;
@@ -163,7 +163,7 @@ size_t t2_write_registry(Registry* registry, FILE* dest) {
 }
 
 /**
- * Reads the given registry (of type VAR_LEN) from the target file
+ * Reads the given registry (of type RT_VAR_LEN) from the target file
  * @param registry registry to be read into
  * @param src source file
  * @return the amount of bytes read
@@ -172,7 +172,7 @@ size_t t2_read_registry(Registry* registry, FILE* src) {
     ex_assert(registry != NULL, EX_GENERIC_ERROR);
     ex_assert(registry->registry_content != NULL, EX_GENERIC_ERROR);
     ex_assert(registry->registry_metadata != NULL, EX_GENERIC_ERROR);
-    ex_assert(registry->registry_type == VAR_LEN, EX_GENERIC_ERROR);
+    ex_assert(registry->registry_type == RT_VAR_LEN, EX_GENERIC_ERROR);
     ex_assert(src != NULL, EX_FILE_ERROR);
 
     T2RegistryMetadata* registry_metadata = registry->registry_metadata;
@@ -208,7 +208,7 @@ size_t t2_read_registry(Registry* registry, FILE* src) {
 }
 
 /**
- * Setups the given VAR_LEN header metadata
+ * Setups the given RT_VAR_LEN header metadata
  * @param header_metadata target header metadata
  */
 void t2_setup_header_metadata(T2HeaderMetadata* header_metadata) {
@@ -219,7 +219,7 @@ void t2_setup_header_metadata(T2HeaderMetadata* header_metadata) {
 }
 
 /**
- * Setups the given VAR_LEN registry metadata
+ * Setups the given RT_VAR_LEN registry metadata
  * @param registry_metadata
  */
 void t2_setup_registry_metadata(T2RegistryMetadata* registry_metadata) {
@@ -229,7 +229,7 @@ void t2_setup_registry_metadata(T2RegistryMetadata* registry_metadata) {
 }
 
 /**
- * Allocates and setup a new VAR_LEN header metadata
+ * Allocates and setup a new RT_VAR_LEN header metadata
  * @return the allocated header metadata
  */
 T2HeaderMetadata* t2_new_header_metadata() {
@@ -239,7 +239,7 @@ T2HeaderMetadata* t2_new_header_metadata() {
 }
 
 /**
- * Allocates and setup a new VAR_LEN registry metadata
+ * Allocates and setup a new RT_VAR_LEN registry metadata
  * @return the allocated registry metadata
  */
 T2RegistryMetadata* t2_new_registry_metadata() {
