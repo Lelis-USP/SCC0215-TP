@@ -52,6 +52,7 @@ void destroy_command_args(CommandArgs* args) {
                 break;
 
             case DESERIALIZE_SEARCH_RRN_AND_PRINT:
+            case QUERY_REGISTRY_WITH_BTREE_INDEX:
                 free(args->specific_data);
                 break;
 

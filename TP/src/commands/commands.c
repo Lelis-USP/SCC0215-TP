@@ -948,6 +948,81 @@ void c_update_registry(CommandArgs* args) {
     print_autocorrection_checksum(args->secondary_file);
 }
 
+/**
+ * Query index for registry
+ * @param args command args
+ */
+void c_query_index_registry(CommandArgs* args) {
+    ex_assert(args->primary_file != NULL, EX_COMMAND_PARSE_ERROR);
+    ex_assert(args->secondary_file != NULL, EX_COMMAND_PARSE_ERROR);
+    ex_assert(args->specific_data != NULL, EX_COMMAND_PARSE_ERROR);
+
+    SearchByIDArgs* id_args = args->specific_data;
+
+    // Open registry_file
+    FILE* registry_file = fopen(args->primary_file, "rb");
+    if (registry_file == NULL) {
+        puts(EX_FILE_ERROR);
+        return;
+    }
+
+    // Open index_file
+    FILE* index_file = fopen(args->secondary_file, "rb");
+    if (index_file == NULL) {
+        puts(EX_FILE_ERROR);
+        return;
+    }
+
+    // Allocate and read header
+    Header* header = build_header(args->registry_type);
+    size_t first_registry_offset = read_header(header, registry_file);
+
+    // Load index
+    IndexHeader* index_header = new_index(args->registry_type, args->index_type);
+    size_t read_bytes_index = read_index(index_header, index_file);
+
+    // Check for read failure or bad status
+    if (first_registry_offset == 0 || get_header_status(header) == STATUS_BAD || read_bytes_index == 0 || get_index_status(index_header) == STATUS_BAD) {
+        puts(EX_FILE_ERROR);
+        fclose(registry_file);
+        fclose(index_file);
+        destroy_header(header);
+        destroy_index_header(index_header);
+        return;
+    }
+
+    // Search for id on index
+    IndexElement index_match = index_query(index_header, id_args->id);
+
+    // If found, retrieve
+    if (index_match.id != -1) {
+        // Allocate registry
+        Registry* registry = build_registry(header);
+
+        // Load target registry
+        seek_registry(header, registry_file, index_match.reference);
+        read_registry(registry, registry_file);
+
+        // If registry is not present skip
+        if (!is_registry_removed(registry)){
+            print_registry(header, registry);
+        } else { // Should never hit this else, since the registry won't be on the index, but...
+            puts(EX_REGISTRY_NOT_FOUND);
+        }
+
+        // Cleanup
+        destroy_registry(registry);
+    } else {
+        puts(EX_REGISTRY_NOT_FOUND);
+    }
+
+    // Cleanup
+    destroy_header(header);
+    destroy_index_header(index_header);
+    fclose(registry_file);
+    fclose(index_file);
+}
+
 // Utils //
 
 /**

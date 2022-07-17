@@ -11,7 +11,7 @@
 
 // Consts //
 #define MIN_COMMAND 1
-#define MAX_COMMAND 12
+#define MAX_COMMAND 10
 
 enum Command {
     PARSE_AND_SERIALIZE = 1,
@@ -23,9 +23,12 @@ enum Command {
     INSERT_REGISTRY_WITH_LINEAR_INDEX = 7,
     UPDATE_REGISTRY_WITH_LINEAR_INDEX = 8,
     BUILD_BTREE_INDEX_FROM_REGISTRY = 9,
-    REMOVE_REGISTRY_WITH_BTREE_INDEX = 10,
+    QUERY_REGISTRY_WITH_BTREE_INDEX = 10,
+
+    // Implementation not requested
     INSERT_REGISTRY_WITH_BTREE_INDEX = 11,
-    UPDATE_REGISTRY_WITH_BTREE_INDEX = 12
+    REMOVE_REGISTRY_WITH_BTREE_INDEX = 12,
+    UPDATE_REGISTRY_WITH_BTREE_INDEX = 13
 };
 
 // Field names for input parsing
@@ -109,6 +112,10 @@ typedef struct UpdateArgs {
     uint32_t n_updates;
     UpdateTarget* update_targets;
 } UpdateArgs;
+
+typedef struct SearchByIDArgs {
+    int32_t id;
+} SearchByIDArgs;
 
 /**
  * Create command args struct

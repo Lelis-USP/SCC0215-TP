@@ -72,6 +72,8 @@ BTreeIndexNode* new_btree_index_node(BTreeIndexHeader* b_tree_index_header) {
     node->nroChaves = 0;
     node->elements = malloc(b_tree_index_header->degree * sizeof(struct IndexElement));
     node->edges = malloc((b_tree_index_header->degree + 1) * sizeof(int32_t));
+
+    memset(node->elements, -1, (b_tree_index_header->degree) * sizeof(struct IndexElement));
     memset(node->edges, -1, (b_tree_index_header->degree + 1) * sizeof(int32_t));
 
     node->parent_node = NULL;
@@ -176,7 +178,7 @@ BTreeNodeInsertResponse b_tree_node_insert_element(BTreeIndexHeader* index_heade
     uint32_t idx = b_tree_node_search(index_node, node_insert_request.target.id);
 
     // Check for existing id
-    if (index_node->elements[idx].id == node_insert_request.target.id   ) {
+    if (index_node->elements[idx].id == node_insert_request.target.id) {
         return (BTreeNodeInsertResponse){true};
     }
 
@@ -416,6 +418,74 @@ BTreeIndexInsertResponse b_tree_index_insert(BTreeIndexHeader* index_header, BTr
     return response;
 }
 
+IndexElement b_tree_index_find(BTreeIndexHeader* index_header, int32_t current_node_rrn, FILE* file, int32_t id) {
+    ex_assert(current_node_rrn < index_header->proxRRN, EX_GENERIC_ERROR);
+    // If no RRN is provided, search for root node
+    if (current_node_rrn == -1) {
+        // If the tree is empty, return not found
+        if (index_header->no_raiz == -1) {
+            return (IndexElement){-1, -1};
+        }
+
+        // Pre-load root node if not present
+        if (index_header->root_node_ref == NULL) {
+            seek_b_tree_node(index_header, file, index_header->no_raiz);
+            index_header->root_node_ref = new_btree_index_node(index_header);
+            read_b_tree_index_node(index_header, index_header->root_node_ref, file);
+        }
+
+        // Update current node's RRN
+        current_node_rrn = index_header->no_raiz;
+    }
+
+    // Not found response
+    IndexElement response = {-1, -1};
+
+    // Load target node
+    BTreeIndexNode* current_node = NULL;
+    if (current_node_rrn == index_header->no_raiz) {
+        // Root node
+        current_node = index_header->root_node_ref;
+    } else {
+        // Other nodes
+        seek_b_tree_node(index_header, file, current_node_rrn);
+        current_node = new_btree_index_node(index_header);
+        read_b_tree_index_node(index_header, current_node, file);
+    }
+
+    // Store any insertion request to be executed on current node
+    if (b_tree_node_is_leaf(index_header, current_node)) {
+        // Search element index
+        uint32_t target_idx = b_tree_node_search(current_node, id);
+
+        // Element found
+        if (target_idx < current_node->nroChaves && current_node->elements[target_idx].id == id) {
+            response = current_node->elements[target_idx];
+        }
+    } else {
+        // If not on leaf, recursevily call for child node and load insertions, if required
+        uint32_t target_idx = b_tree_node_search(current_node, id);
+
+        if (target_idx < current_node->nroChaves && current_node->elements[target_idx].id == id) {
+            response = current_node->elements[target_idx];
+        } else {
+            int32_t target_rrn = current_node->edges[target_idx];
+
+            // Check if there is an edge, if there is the target must be there
+            if (target_rrn != -1) {
+                response = b_tree_index_find(index_header, target_rrn, file, id);
+            }
+        }
+    }
+
+    // Current node cleanup
+    if (current_node != index_header->root_node_ref) {
+        destroy_b_tree_index_node(current_node);
+    }
+
+    return response;
+}
+
 /////////////////////////////
 // Public index operations //
 /////////////////////////////
@@ -427,7 +497,7 @@ BTreeIndexInsertResponse b_tree_index_insert(BTreeIndexHeader* index_header, BTr
  * @return the index element (id will be -1 if not found)
  */
 IndexElement b_tree_index_query(BTreeIndexHeader* index_header, FILE* file, int32_t id) {
-    return (IndexElement) {-1, -1};
+    return b_tree_index_find(index_header, -1, file, id);
 }
 
 /**

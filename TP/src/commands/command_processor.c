@@ -55,6 +55,9 @@ void execute(FILE* data_in) {
         case UPDATE_REGISTRY_WITH_LINEAR_INDEX:
             c_update_registry(args);
             break;
+        case QUERY_REGISTRY_WITH_BTREE_INDEX:
+            c_query_index_registry(args);
+            break;
     }
 
     destroy_command_args(args);
@@ -429,6 +432,30 @@ CommandArgs* read_command(FILE* source) {
                     }
                 }
             }
+            break;
+        case QUERY_REGISTRY_WITH_BTREE_INDEX:
+            args->index_type = IT_B_TREE;
+
+            read_secondary_file_path(source, args);
+            char* field_name = read_string_raw(source);
+
+            // Check that the field is the ID
+            if (strcmp(field_name, ID_FIELD_NAME) != 0) {
+                free(field_name);
+                destroy_command_args(args);
+                puts(EX_COMMAND_PARSE_ERROR);
+                return NULL;
+            }
+
+            // Load search id
+            int32_t id;
+            fscanf(source, "%d", &id);
+
+            // Build args
+            SearchByIDArgs* id_args = malloc(sizeof (struct SearchByIDArgs));
+            args->specific_data = id_args;
+            id_args->id = id;
+
             break;
     }
 

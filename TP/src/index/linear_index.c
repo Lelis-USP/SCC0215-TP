@@ -319,7 +319,9 @@ bool linear_index_update(LinearIndexHeader* index_header, int32_t id, int64_t re
     return true;
 }
 
+//////////////
 // File I/O //
+//////////////
 
 /**
  * Write entire index into the target file
