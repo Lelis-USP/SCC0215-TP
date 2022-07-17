@@ -6,8 +6,8 @@
 
 #include <stdlib.h>
 
-#include "common.h"
 #include "../exception/exception.h"
+#include "../struct/common.h"
 
 // Memory management //
 /**
@@ -195,7 +195,7 @@ bool index_remove(IndexHeader* index_header, int32_t id) {
  * @param reference id's reference (RRN or byte offset)
  * @return if the id was inserted in the index (false indicates its already present)
  */
-bool index_add(IndexHeader* index_header, int32_t id, uint64_t reference) {
+bool index_add(IndexHeader* index_header, int32_t id, int64_t reference) {
     ex_assert(index_header != NULL, EX_GENERIC_ERROR);
     ex_assert(index_header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
 
@@ -233,7 +233,7 @@ bool index_add(IndexHeader* index_header, int32_t id, uint64_t reference) {
  * @param reference new id's reference
  * @return if the index was updated (false indicates id was not found)
  */
-bool index_update(IndexHeader* index_header, int32_t id, uint64_t reference) {
+bool index_update(IndexHeader* index_header, int32_t id, int64_t reference) {
     ex_assert(index_header != NULL, EX_GENERIC_ERROR);
     ex_assert(index_header->registry_type != UNKNOWN, EX_CORRUPTED_REGISTRY);
 

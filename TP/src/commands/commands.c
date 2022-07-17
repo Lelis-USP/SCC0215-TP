@@ -9,11 +9,11 @@
 
 #include "../const/const.h"
 #include "../exception/exception.h"
-#include "../struct/index.h"
 #include "../utils/csv_parser.h"
 #include "../utils/provided_functions.h"
 #include "../utils/registry_loader.h"
 #include "common.h"
+#include "../index/index.h"
 
 
 // Commands //
@@ -506,9 +506,6 @@ void c_remove_registry(CommandArgs* args) {
     fseek(registry_file, 0, SEEK_SET);
     write_header(header, registry_file);
 
-    // Update the index
-    index_sort(index_header);
-
     // Reopen the index file to update it (reopen is neccessary since truncation isn't part of the C ANSI standard, although there are POSIX specific implementations)
     index_file = freopen(args->secondary_file, "wb", index_file);
     if (index_file == NULL) {
@@ -660,9 +657,6 @@ void c_insert_registry(CommandArgs* args) {
     fseek(registry_file, 0, SEEK_SET);
     write_header(header, registry_file);
 
-    // Update the index
-    index_sort(index_header);
-
     // Reopen index file
     index_file = freopen(args->secondary_file, "wb", index_file);
     if (index_file == NULL) {
@@ -698,39 +692,39 @@ void c_insert_registry(CommandArgs* args) {
  * @param update_target the update info
  * @return if a re-index is necessary (index key change)
  */
-bool apply_registry_updates(Header* header, Registry* registry, UpdateTarget update_target) {
+bool apply_registry_updates(Header* header, Registry* registry, UpdateTarget* update_target) {
     bool re_index = false;
 
-    if (update_target.update_id) {
-        registry->registry_content->id = update_target.id;
+    if (update_target->update_id) {
+        registry->registry_content->id = update_target->id;
         re_index = true;
     }
 
-    if (update_target.update_ano) {
-        registry->registry_content->ano = update_target.ano;
+    if (update_target->update_ano) {
+        registry->registry_content->ano = update_target->ano;
     }
 
-    if (update_target.update_qtt) {
-        registry->registry_content->qtt = update_target.qtt;
+    if (update_target->update_qtt) {
+        registry->registry_content->qtt = update_target->qtt;
     }
 
-    if (update_target.update_sigla) {
+    if (update_target->update_sigla) {
         for (uint32_t j = 0; j < REGISTRY_SIGLA_SIZE; j++) {
-            registry->registry_content->sigla[j] = update_target.sigla[j];
+            registry->registry_content->sigla[j] = update_target->sigla[j];
         }
     }
 
-    if (update_target.update_cidade) {
+    if (update_target->update_cidade) {
         free(registry->registry_content->cidade);
-        if (update_target.cidade != NULL) {
+        if (update_target->cidade != NULL) {
             // Len
-            size_t len_cidade = strlen(update_target.cidade);
+            size_t len_cidade = strlen(update_target->cidade);
             registry->registry_content->tamCidade = len_cidade;
             // Code
             memcpy(registry->registry_content->codC5, header->header_content->codC5, CODE_FIELD_LEN * sizeof (char));
             // Str Data
             registry->registry_content->cidade = malloc((len_cidade + 1) * sizeof (char));
-            memcpy(registry->registry_content->cidade, update_target.cidade, len_cidade * sizeof (char));
+            memcpy(registry->registry_content->cidade, update_target->cidade, len_cidade * sizeof (char));
             registry->registry_content->cidade[len_cidade] = '\0';
         } else {
             if (registry->registry_content->cidade != NULL) {
@@ -740,17 +734,17 @@ bool apply_registry_updates(Header* header, Registry* registry, UpdateTarget upd
         }
     }
 
-    if (update_target.update_marca) {
+    if (update_target->update_marca) {
         free(registry->registry_content->marca);
-        if (update_target.marca != NULL) {
+        if (update_target->marca != NULL) {
             // Len
-            size_t len_marca = strlen(update_target.marca);
+            size_t len_marca = strlen(update_target->marca);
             registry->registry_content->tamMarca = len_marca;
             // Code
             memcpy(registry->registry_content->codC6, header->header_content->codC6, CODE_FIELD_LEN * sizeof (char));
             // Str Data
             registry->registry_content->marca = malloc((len_marca + 1) * sizeof (char));
-            memcpy(registry->registry_content->marca, update_target.marca, len_marca * sizeof (char));
+            memcpy(registry->registry_content->marca, update_target->marca, len_marca * sizeof (char));
             registry->registry_content->marca[len_marca] = '\0';
         } else {
             if (registry->registry_content->marca != NULL) {
@@ -760,17 +754,17 @@ bool apply_registry_updates(Header* header, Registry* registry, UpdateTarget upd
         }
     }
 
-    if (update_target.update_modelo) {
+    if (update_target->update_modelo) {
         free(registry->registry_content->modelo);
-        if (update_target.modelo != NULL) {
+        if (update_target->modelo != NULL) {
             // Len
-            size_t len_modelo = strlen(update_target.modelo);
+            size_t len_modelo = strlen(update_target->modelo);
             registry->registry_content->tamModelo = len_modelo;
             // Code
             memcpy(registry->registry_content->codC7, header->header_content->codC7, CODE_FIELD_LEN * sizeof (char));
             // Str Data
             registry->registry_content->modelo = malloc((len_modelo + 1) * sizeof (char));
-            memcpy(registry->registry_content->modelo, update_target.modelo, len_modelo * sizeof (char));
+            memcpy(registry->registry_content->modelo, update_target->modelo, len_modelo * sizeof (char));
             registry->registry_content->modelo[len_modelo] = '\0';
         } else {
             if (registry->registry_content->modelo!= NULL) {
@@ -781,6 +775,43 @@ bool apply_registry_updates(Header* header, Registry* registry, UpdateTarget upd
     }
 
     return re_index;
+}
+
+/**
+ * Execute the update for a given registry, changing the registry file and index
+ * @param header target registry's header
+ * @param registry target registry
+ * @param current_update the update to be applied
+ * @param registry_file the registry's file
+ * @param index_header the index associated to the registry
+ * @return if the update was executed
+ */
+bool execute_update(Header* header, Registry* registry, UpdateTarget* current_update, FILE* registry_file, IndexHeader* index_header) {
+    // Check if there will be conflicting ids
+    if (current_update->update_id) {
+        if (current_update->id != registry->registry_content->id && index_query(index_header, current_update->id) != NULL) {
+            return false;
+        }
+    }
+
+    // Keep track of old id, in case of an update
+    int32_t old_id = registry->registry_content->id;
+    bool reindex = apply_registry_updates(header, registry, current_update);
+
+    // Updates the registry
+    bool rereference = update_registry(header, registry, registry_file);
+
+    // Updates the index
+    if (reindex) {
+        // ID changed, so we need to remove the old one from the index and insert a new one
+        index_remove(index_header, old_id);
+        index_add(index_header, registry->registry_content->id, get_registry_reference(header, registry->offset));
+    } else if (rereference) {
+        // ID is the same, but the offset changed, so we need to update the index reference
+        index_update(index_header, registry->registry_content->id, get_registry_reference(header, registry->offset));
+    }
+
+    return true;
 }
 
 /**
@@ -846,7 +877,6 @@ void c_update_registry(CommandArgs* args) {
         // Search for the registries to update //
         if (current_update.indexed_filter_args != NULL) {
             // Indexed cases //
-
             FilterArgs* filter_args = current_update.indexed_filter_args;
 
             ex_assert(strcmp(filter_args->key, ID_FIELD_NAME) == 0, EX_COMMAND_PARSE_ERROR);
@@ -872,24 +902,8 @@ void c_update_registry(CommandArgs* args) {
                 continue;
             }
 
-            // Apply update //
-
-            // Keep track of old id, in case of an update
-            int32_t old_id = registry->registry_content->id;
-            bool reindex = apply_registry_updates(header, registry, current_update);
-
-            // Updates the registry
-            bool rereference = update_registry(header, registry, registry_file);
-
-            // Updates the index
-            if (reindex) {
-                // ID changed, so we need to remove the old one from the index and insert a new one
-                index_remove(index_header, old_id);
-                index_add(index_header, registry->registry_content->id, get_registry_reference(header, registry->offset));
-            } else if (rereference) {
-                // ID is the same, but the offset changed, so we need to update the index reference
-                index_update(index_header, registry->registry_content->id, get_registry_reference(header, registry->offset));
-            }
+            // Execute the update
+            execute_update(header, registry, &current_update, registry_file, index_header);
         } else {
             // Non-indexed cases //
 
@@ -912,28 +926,14 @@ void c_update_registry(CommandArgs* args) {
                     continue;
                 }
 
-                // Do update
-
                 // Store current offset for later recovery
                 size_t cur_offset = current_offset(registry_file);
 
-                // Keep old id in case of change
-                int32_t old_id = registry->registry_content->id;
-                bool reindex = apply_registry_updates(header, registry, current_update);
-
-                // Update the registry
-                bool rereference = update_registry(header, registry, registry_file);
+                // Execute the update
+                execute_update(header, registry, &current_update, registry_file, index_header);
 
                 // Recover to iteration position
                 go_to_offset(cur_offset, registry_file);
-
-                // Update the index
-                if (reindex) {
-                    index_remove(index_header, old_id);
-                    index_add(index_header, registry->registry_content->id, get_registry_reference(header, registry->offset));
-                } else if (rereference) {
-                    index_update(index_header, registry->registry_content->id, get_registry_reference(header, registry->offset));
-                }
             }
         }
     }
@@ -945,9 +945,6 @@ void c_update_registry(CommandArgs* args) {
     set_header_status(header, STATUS_GOOD);
     fseek(registry_file, 0, SEEK_SET);
     write_header(header, registry_file);
-
-    // Update the index
-    index_sort(index_header);
 
     // Reopen the index
     index_file = freopen(args->secondary_file, "wb", index_file);

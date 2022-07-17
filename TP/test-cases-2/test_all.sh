@@ -4,6 +4,7 @@ cur_dir=$(pwd)
 src_dir=$cur_dir/../src
 test_script=./make_test.sh
 build_flags="env=test"
+ignored_tests=(21)
 
 build=1
 
@@ -30,6 +31,11 @@ fi
 
 for i in {1..22}
 do
+  if [[ " ${ignored_tests[*]} " == *" $i "* ]]; then
+    echo "Skipping test $i (disabled)"
+    continue
+  fi
+
   echo "Testing $i"
   $test_script "$i"
   ec=$?

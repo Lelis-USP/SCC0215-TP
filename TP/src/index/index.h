@@ -6,11 +6,11 @@
 
 #include <stdint.h>
 
-#include "registry.h"
+#include "../struct/registry.h"
 
 typedef struct IndexElement {
     int32_t id;
-    uint64_t reference; // Might be an RRN (32bit) or a byte offset (64bit)
+    int64_t reference; // Might be an RRN (32bit) or a byte offset (64bit)
 } IndexElement;
 
 typedef struct IndexHeader {
@@ -73,7 +73,7 @@ bool index_remove(IndexHeader* index_header, int32_t id);
  * @param reference id's reference (RRN or byte offset)
  * @return if the id was inserted in the index (false indicates its already present)
  */
-bool index_add(IndexHeader* index_header, int32_t id, uint64_t reference);
+bool index_add(IndexHeader* index_header, int32_t id, int64_t reference);
 
 /**
  * Update and existing id's reference on the index
@@ -82,7 +82,7 @@ bool index_add(IndexHeader* index_header, int32_t id, uint64_t reference);
  * @param reference new id's reference
  * @return if the index was updated (false indicates id was not found)
  */
-bool index_update(IndexHeader* index_header, int32_t id, uint64_t reference);
+bool index_update(IndexHeader* index_header, int32_t id, int64_t reference);
 
 /**
  * Sorts the index for further searches
