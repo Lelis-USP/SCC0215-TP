@@ -447,6 +447,9 @@ CommandArgs* read_command(FILE* source) {
                 return NULL;
             }
 
+            // Free the field name, since it won't be used anymore
+            free(field_name);
+
             // Load search id
             int32_t id;
             fscanf(source, "%d", &id);
