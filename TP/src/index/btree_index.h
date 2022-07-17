@@ -130,4 +130,3 @@ size_t read_b_tree_index_node(BTreeIndexHeader* index_header, BTreeIndexNode* in
 void set_b_tree_index_status(BTreeIndexHeader* index_header, char status);
 char get_b_tree_index_status(BTreeIndexHeader* index_header);
 void write_b_tree_index_status(BTreeIndexHeader* index_header, FILE* file);
-

@@ -5,8 +5,8 @@
 #pragma once
 
 #include "common.h"
-#include "registry_content.h"
 #include "registry.h"
+#include "registry_content.h"
 
 #define T1_HEADER_SIZE 182
 #define T1_REGISTRY_SIZE 97

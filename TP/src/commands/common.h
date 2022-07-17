@@ -6,8 +6,9 @@
 
 #include <stdint.h>
 #include <stdio.h>
-#include "../struct/registry.h"
+
 #include "../index/index.h"
+#include "../struct/registry.h"
 
 // Consts //
 #define MIN_COMMAND 1

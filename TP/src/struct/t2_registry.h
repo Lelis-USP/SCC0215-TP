@@ -5,8 +5,8 @@
 #pragma once
 
 #include "common.h"
-#include "registry_content.h"
 #include "registry.h"
+#include "registry_content.h"
 
 /**
  * RT_VAR_LEN header metadata struct

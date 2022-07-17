@@ -107,7 +107,7 @@ void setup_registry(Registry* registry) {
  * @return the allocated header
  */
 Header* new_header() {
-    Header* header = malloc(sizeof (struct Header));
+    Header* header = malloc(sizeof(struct Header));
     header->registry_type = RT_UNKNOWN;
     setup_header(header);
     return header;
@@ -118,7 +118,7 @@ Header* new_header() {
  * @return the allocated registry
  */
 Registry* new_registry() {
-    Registry* registry = malloc(sizeof (struct Registry));
+    Registry* registry = malloc(sizeof(struct Registry));
     registry->registry_type = RT_UNKNOWN;
     setup_registry(registry);
     return registry;
@@ -204,12 +204,12 @@ Header* build_default_header(RegistryType registry_type) {
 
     switch (registry_type) {
         case RT_FIX_LEN:
-            memcpy(header->header_metadata, &DEFAULT_T1_HEADER_METADATA, sizeof (struct T1HeaderMetadata));
-            memcpy(header->header_content, &DEFAULT_HEADER_CONTENT, sizeof (struct HeaderContent));
+            memcpy(header->header_metadata, &DEFAULT_T1_HEADER_METADATA, sizeof(struct T1HeaderMetadata));
+            memcpy(header->header_content, &DEFAULT_HEADER_CONTENT, sizeof(struct HeaderContent));
             break;
         case RT_VAR_LEN:
-            memcpy(header->header_metadata, &DEFAULT_T2_HEADER_METADATA, sizeof (struct T2HeaderMetadata));
-            memcpy(header->header_content, &DEFAULT_HEADER_CONTENT, sizeof (struct HeaderContent));
+            memcpy(header->header_metadata, &DEFAULT_T2_HEADER_METADATA, sizeof(struct T2HeaderMetadata));
+            memcpy(header->header_content, &DEFAULT_HEADER_CONTENT, sizeof(struct HeaderContent));
             break;
         default:
             ex_raise(EX_GENERIC_ERROR);
@@ -427,7 +427,7 @@ void remove_registry(Header* header, Registry* registry, FILE* file) {
             read_registry(cur_registry, file);
 
             // Ordered-insert the removed registry in the queue
-            while (cur_registry != NULL && ((T2RegistryMetadata*)cur_registry->registry_metadata)->tamanhoRegistro >= registry_metadata->tamanhoRegistro) {
+            while (cur_registry != NULL && ((T2RegistryMetadata*) cur_registry->registry_metadata)->tamanhoRegistro >= registry_metadata->tamanhoRegistro) {
                 T2RegistryMetadata* cur_registry_metadata = cur_registry->registry_metadata;
 
                 // If prev doesn't exist, allocate new registry for it
@@ -462,9 +462,9 @@ void remove_registry(Header* header, Registry* registry, FILE* file) {
                 write_registry(prev_registry, file);
 
                 // Update removed registry prox reference
-                if (cur_registry == NULL) { // List end
+                if (cur_registry == NULL) {// List end
                     registry_metadata->prox = -1;
-                } else { // Middle of list
+                } else {// Middle of list
                     registry_metadata->prox = (int64_t) get_registry_reference(header, cur_registry->offset);
                 }
             }

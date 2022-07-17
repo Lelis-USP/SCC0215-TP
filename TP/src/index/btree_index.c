@@ -186,7 +186,7 @@ BTreeNodeInsertResponse b_tree_node_insert_element(BTreeIndexHeader* index_heade
     // Shift all elements and edges after insertion to the right
     index_node->edges[index_node->nroChaves + 1] = index_node->edges[index_node->nroChaves];
     for (int64_t i = (int64_t) index_node->nroChaves - 1; i >= idx; i--) {
-        index_node->elements[i+ 1] = index_node->elements[i];
+        index_node->elements[i + 1] = index_node->elements[i];
         index_node->edges[i + 1] = index_node->edges[i];
     }
 
@@ -220,8 +220,8 @@ BTreeNodeSplitResponse b_tree_node_split(BTreeIndexHeader* index_header, BTreeIn
     // Move left node data to right node
     uint32_t offset = promotion_idx + 1;
     right_node->edges[0] = index_node->edges[offset];
-    index_node->edges[offset] = -1; // Remove copied edge
-    for(uint32_t i = offset; i < index_node->nroChaves; i++) {
+    index_node->edges[offset] = -1;// Remove copied edge
+    for (uint32_t i = offset; i < index_node->nroChaves; i++) {
         // Add element to right node
         right_node->elements[i - offset] = index_node->elements[i];
         right_node->nroChaves++;
@@ -579,7 +579,6 @@ size_t read_b_tree_index(BTreeIndexHeader* index_header, FILE* src) {
     read_bytes += read_b_tree_index_header(index_header, src);
 
     return read_bytes;
-
 }
 
 /**

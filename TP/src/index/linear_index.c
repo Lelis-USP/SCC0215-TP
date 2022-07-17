@@ -17,7 +17,7 @@
  * @return the allocated header
  */
 LinearIndexHeader* new_linear_index_header() {
-    LinearIndexHeader* index_header = malloc(sizeof (struct LinearIndexHeader));
+    LinearIndexHeader* index_header = malloc(sizeof(struct LinearIndexHeader));
 
     index_header->status = STATUS_GOOD;
     index_header->sorted = true;
@@ -59,7 +59,7 @@ LinearIndexHeader* new_linear_index(RegistryType registry_type) {
  * @param index_header target index header
  * @return the index of the new allocated position (pool_used - 1)
  */
-uint32_t reserve_linear_pool_pos(LinearIndexHeader* index_header){
+uint32_t reserve_linear_pool_pos(LinearIndexHeader* index_header) {
     // There is still space on the pool
     if (index_header->pool_used < index_header->pool_size) {
         index_header->pool_used++;
@@ -68,14 +68,14 @@ uint32_t reserve_linear_pool_pos(LinearIndexHeader* index_header){
 
     // First pool reservation
     if (index_header->index_pool == NULL) {
-        index_header->index_pool = calloc(INITIAL_POOL_SIZE, sizeof (struct IndexElement));
+        index_header->index_pool = calloc(INITIAL_POOL_SIZE, sizeof(struct IndexElement));
         index_header->pool_size = INITIAL_POOL_SIZE;
         index_header->pool_used = 1;
         return 0;
     }
 
     // Extend pool size (using exponential approach)
-    IndexElement* new_pool = realloc(index_header->index_pool, index_header->pool_size * POOL_SCALING_FACTOR * sizeof (struct IndexElement));
+    IndexElement* new_pool = realloc(index_header->index_pool, index_header->pool_size * POOL_SCALING_FACTOR * sizeof(struct IndexElement));
 
     if (new_pool == NULL) {
         ex_raise(EX_MEMORY_ERROR);
@@ -249,7 +249,7 @@ bool linear_index_add(LinearIndexHeader* index_header, int32_t id, int64_t refer
                 index_header->index_pool[i] = index_header->index_pool[i - 1];
                 index_header->index_pool[i - 1] = tmp;
             } else {
-                break ;
+                break;
             }
         }
     }

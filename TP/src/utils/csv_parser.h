@@ -110,4 +110,4 @@ CSVContent* read_csv(FILE* csv_file, bool has_header);
  * @param it the iterating function called with each line
  * @param passthrough passthrough params to the iterating function
  */
-void stream_csv(FILE* csv_file, void (*it) (int idx, CSVLine* cur_line, void* passthrough), void* passthrough);
+void stream_csv(FILE* csv_file, void (*it)(int idx, CSVLine* cur_line, void* passthrough), void* passthrough);

@@ -7,11 +7,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "commands.h"
-#include "common.h"
+#include "../exception/exception.h"
 #include "../utils/provided_functions.h"
 #include "../utils/utils.h"
-#include "../exception/exception.h"
+#include "commands.h"
+#include "common.h"
 
 //#define COMMANDS_BUFFER_SIZE 512
 
@@ -95,8 +95,8 @@ char* read_string_field(FILE* source) {
         return NULL;
     }
 
-    char* str = malloc((value_len + 1) * sizeof (char));
-    memcpy(str, buffer, value_len * sizeof (char));
+    char* str = malloc((value_len + 1) * sizeof(char));
+    memcpy(str, buffer, value_len * sizeof(char));
     str[value_len] = '\0';
     return str;
 }
@@ -148,7 +148,7 @@ void read_sigla_field(FILE* source, char* sigla) {
  * @param args command args ptr
  */
 void read_secondary_file_path(FILE* source, CommandArgs* args) {
-    args->secondary_file = read_string_raw(source) ;
+    args->secondary_file = read_string_raw(source);
 }
 
 // Read and parse commands //
@@ -209,8 +209,7 @@ CommandArgs* read_command(FILE* source) {
         case DESERIALIZE_AND_PRINT:
             break;
 
-        case DESERIALIZE_FILTER_AND_PRINT:
-            ; // This is not a typo
+        case DESERIALIZE_FILTER_AND_PRINT:;// This is not a typo
             // Read number of filters to read
             uint32_t n_filters;
             fscanf(source, "%u", &n_filters);
@@ -240,8 +239,7 @@ CommandArgs* read_command(FILE* source) {
             }
             break;
 
-        case DESERIALIZE_SEARCH_RRN_AND_PRINT:
-            ; // This is not a typo
+        case DESERIALIZE_SEARCH_RRN_AND_PRINT:;// This is not a typo
             SearchByRRNArgs* rrn_args;
             // Read RRN value
             rrn_args = malloc(sizeof(struct SearchByRRNArgs));
@@ -256,14 +254,14 @@ CommandArgs* read_command(FILE* source) {
         case REMOVE_REGISTRY_WITH_LINEAR_INDEX:
             // Load secondary file path
             read_secondary_file_path(source, args);
-            RemovalArgs* removal_args = malloc(sizeof (struct RemovalArgs));
+            RemovalArgs* removal_args = malloc(sizeof(struct RemovalArgs));
             args->specific_data = removal_args;
 
             // Load n removals
             fscanf(source, "%u", &removal_args->n_removals);
 
             // Allocate removal targets
-            removal_args->removal_targets = calloc(removal_args->n_removals, sizeof (struct RemovalTarget));
+            removal_args->removal_targets = calloc(removal_args->n_removals, sizeof(struct RemovalTarget));
 
             // Read every removal filter
             for (uint32_t i = 0; i < removal_args->n_removals; i++) {
@@ -317,14 +315,14 @@ CommandArgs* read_command(FILE* source) {
             read_secondary_file_path(source, args);
 
             // Allocate insertion args
-            InsertionArgs* insertion_args = malloc(sizeof (struct InsertionArgs));
+            InsertionArgs* insertion_args = malloc(sizeof(struct InsertionArgs));
             args->specific_data = insertion_args;
 
             // Read amount of insertions
             fscanf(source, "%u", &insertion_args->n_insertions);
 
             // Allocate insertion target's array
-            insertion_args->insertion_targets = calloc(insertion_args->n_insertions, sizeof (struct InsertionTarget));
+            insertion_args->insertion_targets = calloc(insertion_args->n_insertions, sizeof(struct InsertionTarget));
 
             for (uint32_t i = 0; i < insertion_args->n_insertions; i++) {
                 // ID
@@ -338,9 +336,9 @@ CommandArgs* read_command(FILE* source) {
                 // Cidade
                 insertion_args->insertion_targets[i].cidade = read_string_field(source);
                 // Marca
-                insertion_args->insertion_targets[i].marca= read_string_field(source);
+                insertion_args->insertion_targets[i].marca = read_string_field(source);
                 // Modelo
-                insertion_args->insertion_targets[i].modelo= read_string_field(source);
+                insertion_args->insertion_targets[i].modelo = read_string_field(source);
             }
             break;
 
@@ -351,14 +349,14 @@ CommandArgs* read_command(FILE* source) {
             read_secondary_file_path(source, args);
 
             // Allocate insertion args
-            UpdateArgs* update_args = malloc(sizeof (struct UpdateArgs));
+            UpdateArgs* update_args = malloc(sizeof(struct UpdateArgs));
             args->specific_data = update_args;
 
             // Read amount of insertions
             fscanf(source, "%u", &update_args->n_updates);
 
             // Allocate insertion target's array
-            update_args->update_targets= calloc(update_args->n_updates, sizeof (struct UpdateTarget));
+            update_args->update_targets = calloc(update_args->n_updates, sizeof(struct UpdateTarget));
 
             // Load each update
             for (uint32_t i = 0; i < update_args->n_updates; i++) {
@@ -427,8 +425,8 @@ CommandArgs* read_command(FILE* source) {
                         update_args->update_targets[i].marca = read_string_field(source);
                         update_args->update_targets[i].update_marca = true;
                     } else if (strcmp(buffer, MODELO_FIELD_NAME) == 0) {
-                        update_args->update_targets[i].modelo= read_string_field(source);
-                        update_args->update_targets[i].update_modelo= true;
+                        update_args->update_targets[i].modelo = read_string_field(source);
+                        update_args->update_targets[i].update_modelo = true;
                     }
                 }
             }
@@ -455,7 +453,7 @@ CommandArgs* read_command(FILE* source) {
             fscanf(source, "%d", &id);
 
             // Build args
-            SearchByIDArgs* id_args = malloc(sizeof (struct SearchByIDArgs));
+            SearchByIDArgs* id_args = malloc(sizeof(struct SearchByIDArgs));
             args->specific_data = id_args;
             id_args->id = id;
 

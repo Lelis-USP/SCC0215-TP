@@ -174,4 +174,3 @@ void set_linear_index_status(LinearIndexHeader* index_header, char status);
 char get_linear_index_status(LinearIndexHeader* index_header);
 
 void write_linear_index_status(LinearIndexHeader* index_header, FILE* file);
-

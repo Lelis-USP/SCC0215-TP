@@ -3,13 +3,13 @@
 */
 
 #include "index.h"
-#include "linear_index.h"
-#include "btree_index.h"
 
 #include <stdlib.h>
 
 #include "../exception/exception.h"
 #include "../struct/common.h"
+#include "btree_index.h"
+#include "linear_index.h"
 
 ///////////////////////
 // Memory management //
@@ -20,7 +20,7 @@
  * @return the allocated header
  */
 IndexHeader* new_index_header() {
-    IndexHeader* index_header = malloc(sizeof (struct IndexHeader));
+    IndexHeader* index_header = malloc(sizeof(struct IndexHeader));
 
     index_header->index_type = IT_UNKNOWN;
     index_header->header = NULL;
@@ -111,7 +111,7 @@ bool index_add(IndexHeader* index_header, int32_t id, int64_t reference) {
         case IT_LINEAR:
             return linear_index_add((LinearIndexHeader*) index_header->header, id, reference);
         case IT_B_TREE:
-            return b_tree_index_add((BTreeIndexHeader*) index_header->header, index_header->file,id, reference);
+            return b_tree_index_add((BTreeIndexHeader*) index_header->header, index_header->file, id, reference);
         default:
             ex_raise(EX_CORRUPTED_REGISTRY);
     }
@@ -150,7 +150,7 @@ bool index_update(IndexHeader* index_header, int32_t id, int64_t reference) {
         case IT_LINEAR:
             return linear_index_update((LinearIndexHeader*) index_header->header, id, reference);
         case IT_B_TREE:
-            return b_tree_index_update((BTreeIndexHeader*) index_header->header, index_header->file,id, reference);
+            return b_tree_index_update((BTreeIndexHeader*) index_header->header, index_header->file, id, reference);
         default:
             ex_raise(EX_CORRUPTED_REGISTRY);
     }

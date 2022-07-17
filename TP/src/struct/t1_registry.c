@@ -55,8 +55,8 @@ size_t t1_read_header(Header* header, FILE* src) {
     ex_assert(header->registry_type == RT_FIX_LEN, EX_GENERIC_ERROR);
     ex_assert(src != NULL, EX_FILE_ERROR);
 
-    T1HeaderMetadata *metadata = header->header_metadata;
-    HeaderContent *content = header->header_content;
+    T1HeaderMetadata* metadata = header->header_metadata;
+    HeaderContent* content = header->header_content;
 
     // Assumes that header is already set-up on parent call
     size_t read_bytes = 0;
@@ -136,7 +136,7 @@ size_t t1_read_registry(Registry* registry, FILE* src) {
     read_bytes += fread_member_field(registry_metadata, prox, src);
 
     if (registry_metadata->removido == REMOVED) {
-        fseek(src, (long) (T1_REGISTRY_SIZE-read_bytes), SEEK_CUR);
+        fseek(src, (long) (T1_REGISTRY_SIZE - read_bytes), SEEK_CUR);
         return T1_REGISTRY_SIZE;
     }
 
@@ -175,7 +175,7 @@ void t1_setup_registry_metadata(T1RegistryMetadata* registry_metadata) {
  * @return the allocated header metadata
  */
 T1HeaderMetadata* t1_new_header_metadata() {
-    T1HeaderMetadata* header_metadata = malloc(sizeof (struct T1HeaderMetadata));
+    T1HeaderMetadata* header_metadata = malloc(sizeof(struct T1HeaderMetadata));
     t1_setup_header_metadata(header_metadata);
     return header_metadata;
 }
@@ -185,7 +185,7 @@ T1HeaderMetadata* t1_new_header_metadata() {
  * @return the allocated registry metadata
  */
 T1RegistryMetadata* t1_new_registry_metadata() {
-    T1RegistryMetadata* registry_metadata = malloc(sizeof (struct T1RegistryMetadata));
+    T1RegistryMetadata* registry_metadata = malloc(sizeof(struct T1RegistryMetadata));
     t1_setup_registry_metadata(registry_metadata);
     return registry_metadata;
 }

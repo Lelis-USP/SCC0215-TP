@@ -6,11 +6,11 @@
 
 #include <stdbool.h>
 
-#include "common.h"
 #include "../struct/registry.h"
 #include "../struct/registry_content.h"
 #include "../struct/t1_registry.h"
 #include "../struct/t2_registry.h"
+#include "common.h"
 
 // Commands //
 /**

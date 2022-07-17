@@ -57,8 +57,7 @@ void destroy_command_args(CommandArgs* args) {
                 break;
 
             case REMOVE_REGISTRY_WITH_LINEAR_INDEX:
-            case REMOVE_REGISTRY_WITH_BTREE_INDEX:
-                ;
+            case REMOVE_REGISTRY_WITH_BTREE_INDEX:;
                 RemovalArgs* removal_args = args->specific_data;
                 // Free filter chains
                 for (uint32_t i = 0; i < removal_args->n_removals; i++) {
@@ -71,8 +70,7 @@ void destroy_command_args(CommandArgs* args) {
                 break;
 
             case INSERT_REGISTRY_WITH_LINEAR_INDEX:
-            case INSERT_REGISTRY_WITH_BTREE_INDEX:
-                ;
+            case INSERT_REGISTRY_WITH_BTREE_INDEX:;
                 InsertionArgs* insertion_args = args->specific_data;
 
                 for (uint32_t i = 0; i < insertion_args->n_insertions; i++) {
@@ -87,8 +85,7 @@ void destroy_command_args(CommandArgs* args) {
                 break;
 
             case UPDATE_REGISTRY_WITH_LINEAR_INDEX:
-            case UPDATE_REGISTRY_WITH_BTREE_INDEX:
-                ;
+            case UPDATE_REGISTRY_WITH_BTREE_INDEX:;
                 UpdateArgs* update_args = args->specific_data;
 
                 for (uint32_t i = 0; i < update_args->n_updates; i++) {

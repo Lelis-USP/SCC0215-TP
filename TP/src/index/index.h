@@ -22,7 +22,7 @@
 // Index element (key-value pair)
 typedef struct IndexElement {
     int32_t id;
-    int64_t reference; // Might be an RRN (32bit) or a byte offset (64bit)
+    int64_t reference;// Might be an RRN (32bit) or a byte offset (64bit)
 } IndexElement;
 
 // Index types

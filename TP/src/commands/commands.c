@@ -9,11 +9,11 @@
 
 #include "../const/const.h"
 #include "../exception/exception.h"
+#include "../index/index.h"
 #include "../utils/csv_parser.h"
 #include "../utils/provided_functions.h"
 #include "../utils/registry_loader.h"
 #include "common.h"
-#include "../index/index.h"
 
 
 // Commands //
@@ -399,7 +399,7 @@ void c_remove_registry(CommandArgs* args) {
 
     // Allocate and read header
     Header* header = build_header(args->registry_type);
-    size_t first_registry_offset = read_header(header, registry_file); // Store the offset of the first registry
+    size_t first_registry_offset = read_header(header, registry_file);// Store the offset of the first registry
 
     // Load index
     IndexHeader* index_header = new_index(args->registry_type, args->index_type);
@@ -491,9 +491,9 @@ void c_remove_registry(CommandArgs* args) {
                 }
 
                 // Remove matched registry
-                size_t cur_offset = current_offset(registry_file); // Keep current offset to return to it in iteration
+                size_t cur_offset = current_offset(registry_file);// Keep current offset to return to it in iteration
                 remove_registry(header, registry, registry_file);
-                go_to_offset(cur_offset, registry_file); // Return to offset to continue iteration
+                go_to_offset(cur_offset, registry_file);// Return to offset to continue iteration
 
                 // Removed registry from index
                 index_remove(index_header, registry->registry_content->id);
@@ -602,10 +602,10 @@ void c_insert_registry(CommandArgs* args) {
             size_t len_cidade = strlen(current_insertion.cidade);
             registry->registry_content->tamCidade = len_cidade;
             // Code
-            memcpy(registry->registry_content->codC5, header->header_content->codC5, CODE_FIELD_LEN * sizeof (char));
+            memcpy(registry->registry_content->codC5, header->header_content->codC5, CODE_FIELD_LEN * sizeof(char));
             // Str Data
-            registry->registry_content->cidade = malloc((len_cidade + 1) * sizeof (char));
-            memcpy(registry->registry_content->cidade, current_insertion.cidade, len_cidade * sizeof (char));
+            registry->registry_content->cidade = malloc((len_cidade + 1) * sizeof(char));
+            memcpy(registry->registry_content->cidade, current_insertion.cidade, len_cidade * sizeof(char));
             registry->registry_content->cidade[len_cidade] = '\0';
         }
 
@@ -614,10 +614,10 @@ void c_insert_registry(CommandArgs* args) {
             size_t len_marca = strlen(current_insertion.marca);
             registry->registry_content->tamMarca = len_marca;
             // Code
-            memcpy(registry->registry_content->codC6, header->header_content->codC6, CODE_FIELD_LEN * sizeof (char));
+            memcpy(registry->registry_content->codC6, header->header_content->codC6, CODE_FIELD_LEN * sizeof(char));
             // Str Data
-            registry->registry_content->marca = malloc((len_marca + 1) * sizeof (char));
-            memcpy(registry->registry_content->marca, current_insertion.marca, len_marca * sizeof (char));
+            registry->registry_content->marca = malloc((len_marca + 1) * sizeof(char));
+            memcpy(registry->registry_content->marca, current_insertion.marca, len_marca * sizeof(char));
             registry->registry_content->marca[len_marca] = '\0';
         }
 
@@ -626,10 +626,10 @@ void c_insert_registry(CommandArgs* args) {
             size_t len_modelo = strlen(current_insertion.modelo);
             registry->registry_content->tamModelo = len_modelo;
             // Code
-            memcpy(registry->registry_content->codC7, header->header_content->codC7, CODE_FIELD_LEN * sizeof (char));
+            memcpy(registry->registry_content->codC7, header->header_content->codC7, CODE_FIELD_LEN * sizeof(char));
             // Str Data
-            registry->registry_content->modelo = malloc((len_modelo + 1) * sizeof (char));
-            memcpy(registry->registry_content->modelo, current_insertion.modelo, len_modelo * sizeof (char));
+            registry->registry_content->modelo = malloc((len_modelo + 1) * sizeof(char));
+            memcpy(registry->registry_content->modelo, current_insertion.modelo, len_modelo * sizeof(char));
             registry->registry_content->modelo[len_modelo] = '\0';
         }
 
@@ -705,10 +705,10 @@ bool apply_registry_updates(Header* header, Registry* registry, UpdateTarget* up
             size_t len_cidade = strlen(update_target->cidade);
             registry->registry_content->tamCidade = len_cidade;
             // Code
-            memcpy(registry->registry_content->codC5, header->header_content->codC5, CODE_FIELD_LEN * sizeof (char));
+            memcpy(registry->registry_content->codC5, header->header_content->codC5, CODE_FIELD_LEN * sizeof(char));
             // Str Data
-            registry->registry_content->cidade = malloc((len_cidade + 1) * sizeof (char));
-            memcpy(registry->registry_content->cidade, update_target->cidade, len_cidade * sizeof (char));
+            registry->registry_content->cidade = malloc((len_cidade + 1) * sizeof(char));
+            memcpy(registry->registry_content->cidade, update_target->cidade, len_cidade * sizeof(char));
             registry->registry_content->cidade[len_cidade] = '\0';
         } else {
             if (registry->registry_content->cidade != NULL) {
@@ -725,10 +725,10 @@ bool apply_registry_updates(Header* header, Registry* registry, UpdateTarget* up
             size_t len_marca = strlen(update_target->marca);
             registry->registry_content->tamMarca = len_marca;
             // Code
-            memcpy(registry->registry_content->codC6, header->header_content->codC6, CODE_FIELD_LEN * sizeof (char));
+            memcpy(registry->registry_content->codC6, header->header_content->codC6, CODE_FIELD_LEN * sizeof(char));
             // Str Data
-            registry->registry_content->marca = malloc((len_marca + 1) * sizeof (char));
-            memcpy(registry->registry_content->marca, update_target->marca, len_marca * sizeof (char));
+            registry->registry_content->marca = malloc((len_marca + 1) * sizeof(char));
+            memcpy(registry->registry_content->marca, update_target->marca, len_marca * sizeof(char));
             registry->registry_content->marca[len_marca] = '\0';
         } else {
             if (registry->registry_content->marca != NULL) {
@@ -745,13 +745,13 @@ bool apply_registry_updates(Header* header, Registry* registry, UpdateTarget* up
             size_t len_modelo = strlen(update_target->modelo);
             registry->registry_content->tamModelo = len_modelo;
             // Code
-            memcpy(registry->registry_content->codC7, header->header_content->codC7, CODE_FIELD_LEN * sizeof (char));
+            memcpy(registry->registry_content->codC7, header->header_content->codC7, CODE_FIELD_LEN * sizeof(char));
             // Str Data
-            registry->registry_content->modelo = malloc((len_modelo + 1) * sizeof (char));
-            memcpy(registry->registry_content->modelo, update_target->modelo, len_modelo * sizeof (char));
+            registry->registry_content->modelo = malloc((len_modelo + 1) * sizeof(char));
+            memcpy(registry->registry_content->modelo, update_target->modelo, len_modelo * sizeof(char));
             registry->registry_content->modelo[len_modelo] = '\0';
         } else {
-            if (registry->registry_content->modelo!= NULL) {
+            if (registry->registry_content->modelo != NULL) {
                 registry->registry_content->tamModelo = 0;
                 registry->registry_content->modelo = NULL;
             }
@@ -1004,9 +1004,9 @@ void c_query_index_registry(CommandArgs* args) {
         read_registry(registry, registry_file);
 
         // If registry is not present skip
-        if (!is_registry_removed(registry)){
+        if (!is_registry_removed(registry)) {
             print_registry(header, registry);
-        } else { // Should never hit this else, since the registry won't be on the index, but...
+        } else {// Should never hit this else, since the registry won't be on the index, but...
             puts(EX_REGISTRY_NOT_FOUND);
         }
 
