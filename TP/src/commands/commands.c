@@ -294,7 +294,7 @@ void c_build_index_from_registry(CommandArgs* args) {
     }
 
     // Open index_file
-    FILE* index_file = fopen(args->secondary_file, "rb+");
+    FILE* index_file = fopen(args->secondary_file, "wb+");
     if (index_file == NULL) {
         puts(EX_FILE_ERROR);
         return;
@@ -358,6 +358,7 @@ void c_build_index_from_registry(CommandArgs* args) {
 
     // Write index
     write_index(index_header, index_file);
+    index_file = get_index_file(index_header);
 
     // Update index status
     set_index_status(index_header, STATUS_GOOD);
@@ -508,15 +509,9 @@ void c_remove_registry(CommandArgs* args) {
     fseek(registry_file, 0, SEEK_SET);
     write_header(header, registry_file);
 
-    // Reopen the index file to update it (reopen is neccessary since truncation isn't part of the C ANSI standard, although there are POSIX specific implementations)
-    index_file = freopen(args->secondary_file, "wb", index_file);
-    if (index_file == NULL) {
-        puts(EX_FILE_ERROR);
-        return;
-    }
-
     // Write the updated index
     write_index(index_header, index_file);
+    index_file = get_index_file(index_header);
 
     // Update index status
     set_index_status(index_header, STATUS_GOOD);
@@ -655,15 +650,9 @@ void c_insert_registry(CommandArgs* args) {
     fseek(registry_file, 0, SEEK_SET);
     write_header(header, registry_file);
 
-    // Reopen index file
-    index_file = freopen(args->secondary_file, "wb", index_file);
-    if (index_file == NULL) {
-        puts(EX_FILE_ERROR);
-        return;
-    }
-
     // Write updated index
     write_index(index_header, index_file);
+    index_file = get_index_file(index_header);
 
     // Update index status
     set_index_status(index_header, STATUS_GOOD);
@@ -940,15 +929,9 @@ void c_update_registry(CommandArgs* args) {
     fseek(registry_file, 0, SEEK_SET);
     write_header(header, registry_file);
 
-    // Reopen the index
-    index_file = freopen(args->secondary_file, "wb", index_file);
-    if (index_file == NULL) {
-        puts(EX_FILE_ERROR);
-        return;
-    }
-
     // Write the updated index
     write_index(index_header, index_file);
+    index_file = get_index_file(index_header);
 
     // Update index status
     set_index_status(index_header, STATUS_GOOD);

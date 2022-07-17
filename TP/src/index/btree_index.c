@@ -72,7 +72,7 @@ BTreeIndexNode* new_btree_index_node(BTreeIndexHeader* b_tree_index_header) {
     node->nroChaves = 0;
     node->elements = malloc(b_tree_index_header->degree * sizeof(struct IndexElement));
     node->edges = malloc((b_tree_index_header->degree + 1) * sizeof(int32_t));
-    memset(node->edges, -1, b_tree_index_header->degree);
+    memset(node->edges, -1, (b_tree_index_header->degree + 1) * sizeof(int32_t));
 
     node->parent_node = NULL;
     node->rrn = -1;
@@ -183,7 +183,7 @@ BTreeNodeInsertResponse b_tree_node_insert_element(BTreeIndexHeader* index_heade
 
     // Shift all elements and edges after insertion to the right
     index_node->edges[index_node->nroChaves + 1] = index_node->edges[index_node->nroChaves];
-    for (uint32_t i = index_node->nroChaves - 1; i >= idx; i--) {
+    for (int64_t i = (int64_t) index_node->nroChaves - 1; i >= idx; i--) {
         index_node->elements[i+ 1] = index_node->elements[i];
         index_node->edges[i + 1] = index_node->edges[i];
     }
@@ -235,6 +235,7 @@ BTreeNodeSplitResponse b_tree_node_split(BTreeIndexHeader* index_header, BTreeIn
     // Reserve right node position
     right_node->rrn = index_header->proxRRN;
     index_header->proxRRN++;
+    index_header->nroNos++;
 
     return response;
 }
@@ -249,7 +250,7 @@ BTreeNodeSplitResponse b_tree_node_split(BTreeIndexHeader* index_header, BTreeIn
  * @return the results of the insertion (conflicts and if there is a insertion to be made on the parent node)
  */
 BTreeIndexInsertResponse b_tree_index_insert(BTreeIndexHeader* index_header, BTreeIndexNode* parent, int32_t current_node_rrn, FILE* file, IndexElement index_element) {
-    ex_assert(current_node_rrn < index_header->proxRRN, EX_GENERIC_ERROR);
+    ex_assert(current_node_rrn <= index_header->proxRRN, EX_GENERIC_ERROR);
 
     // If no RRN is provided, search for root node
     if (current_node_rrn == -1) {
@@ -262,6 +263,7 @@ BTreeIndexInsertResponse b_tree_index_insert(BTreeIndexHeader* index_header, BTr
             seek_b_tree_node(index_header, file, new_root_rrn);
             index_header->root_node_ref = new_btree_index_node(index_header);
             index_header->root_node_ref->tipoNo = ROOT_NODE;
+            index_header->root_node_ref->rrn = new_root_rrn;
             index_header->no_raiz = new_root_rrn;
 
             // TO-DO: Check if write is neccessary (as of my research, it's not)
@@ -269,6 +271,7 @@ BTreeIndexInsertResponse b_tree_index_insert(BTreeIndexHeader* index_header, BTr
 
             // Increase next RRN ref
             index_header->proxRRN++;
+            index_header->nroNos++;
         }
 
         // Pre-load root node if not present
@@ -290,6 +293,12 @@ BTreeIndexInsertResponse b_tree_index_insert(BTreeIndexHeader* index_header, BTr
     if (current_node_rrn == index_header->no_raiz) {
         // Root node
         current_node = index_header->root_node_ref;
+    } else if (current_node_rrn == index_header->proxRRN) {
+        index_header->proxRRN++;
+        index_header->nroNos++;
+        current_node = new_btree_index_node(index_header);
+        current_node->tipoNo = LEAF_NODE;
+        current_node->rrn = current_node_rrn;
     } else {
         // Other nodes
         seek_b_tree_node(index_header, file, current_node_rrn);
@@ -308,7 +317,11 @@ BTreeIndexInsertResponse b_tree_index_insert(BTreeIndexHeader* index_header, BTr
         // If not on leaf, recursevily call for child node and load insertions, if required
         uint32_t target_idx = b_tree_node_search(current_node, index_element.id);
         int32_t target_rrn = current_node->edges[target_idx];
-        ex_assert(target_rrn != -1, EX_GENERIC_ERROR);
+
+        // If there is no current edge, create a new one
+        if (target_rrn == -1) {
+            target_rrn = index_header->proxRRN;
+        }
 
         BTreeIndexInsertResponse insert_response = b_tree_index_insert(index_header, current_node, target_rrn, file, index_element);
 
@@ -370,8 +383,9 @@ BTreeIndexInsertResponse b_tree_index_insert(BTreeIndexHeader* index_header, BTr
             // Handle root splits pt.2
             if (index_header->root_node_ref->rrn == -1) {
                 // Reserve new root RRN
-                index_header->root_node_ref->rrn = index_header->proxRRN;
+                index_header->root_node_ref->rrn = index_header->no_raiz = index_header->proxRRN;
                 index_header->proxRRN++;
+                index_header->nroNos++;
 
                 // Insert element on root
                 index_header->root_node_ref->elements[0] = split_response.promoted_element;
@@ -595,7 +609,9 @@ size_t write_b_tree_index_node(BTreeIndexHeader* index_header, BTreeIndexNode* i
     }
 
     // Shouldn't actually be used, since page_size - written_bytes will always be 0, but just for completioness
-    written_bytes += fill_bytes(index_header->page_size - written_bytes, dest);
+    if (index_header->page_size > written_bytes) {
+        written_bytes += fill_bytes(index_header->page_size - written_bytes, dest);
+    }
 
     return written_bytes;
 }
@@ -626,7 +642,7 @@ size_t read_b_tree_index_node(BTreeIndexHeader* index_header, BTreeIndexNode* in
         // Write ID
         read_bytes += fread_member_field(&index_node->elements[i], id, src);
 
-        // Write reference
+        // Read reference
         if (index_header->registry_type == RT_FIX_LEN) {
             int32_t reference;
             read_bytes += fread(&reference, 1, sizeof(reference), src);

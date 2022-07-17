@@ -15,10 +15,10 @@
 #define DEFAULT_BTREE_DEGREE 4
 
 // B-Tree page size used for fixed length registries
-#define DEFAULT_BTREE_PAGE_SIZE_FIX_LEN 44
+#define DEFAULT_BTREE_PAGE_SIZE_FIX_LEN 45
 
 // B-Tree page size used for variable length registries
-#define DEFAULT_BTREE_PAGE_SIZE_VAR_LEN 56
+#define DEFAULT_BTREE_PAGE_SIZE_VAR_LEN 57
 
 // B-Tree header's actual data size
 #define BTREE_HEADER_FIXED_SIZE 13
@@ -66,7 +66,6 @@ typedef struct BTreeIndexHeader {
     uint32_t minimum_leaf_occupation;
     uint32_t minimum_middle_occupation;
     uint32_t maximum_occupation;
-    FILE* file;
 } BTreeIndexHeader;
 
 // B-Tree internal arguments/results

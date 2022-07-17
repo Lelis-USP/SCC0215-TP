@@ -163,7 +163,7 @@ bool index_update(IndexHeader* index_header, int32_t id, int64_t reference) {
 //////////////
 
 /**
- * Write entire index into the target file
+ * Write entire index into the target file (might change file ptr)
  * @param index_header target index header
  * @param dest destination file
  * @return amount of bytes written
@@ -172,10 +172,10 @@ size_t write_index(IndexHeader* index_header, FILE* dest) {
     ex_assert(index_header != NULL, EX_GENERIC_ERROR);
     ex_assert(dest != NULL, EX_FILE_ERROR);
 
-    fseek(dest, 0, SEEK_SET);
 
     switch (index_header->index_type) {
         case IT_LINEAR:
+            index_header->file = dest = freopen(NULL, "wb", dest);
             return write_linear_index((LinearIndexHeader*) index_header->header, dest);
         case IT_B_TREE:
             return write_b_tree_index((BTreeIndexHeader*) index_header->header, dest);

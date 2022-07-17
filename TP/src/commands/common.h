@@ -11,7 +11,7 @@
 
 // Consts //
 #define MIN_COMMAND 1
-#define MAX_COMMAND 8
+#define MAX_COMMAND 12
 
 enum Command {
     PARSE_AND_SERIALIZE = 1,
