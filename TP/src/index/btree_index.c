@@ -13,6 +13,11 @@
 // Memory management //
 ///////////////////////
 
+/**
+ * Allocate new B-Tree index header with default parameters for the given registry type
+ * @param registry_type index's registry type
+ * @return the newly allocated header
+ */
 BTreeIndexHeader* new_b_tree_index_header(RegistryType registry_type) {
     BTreeIndexHeader* header = malloc(sizeof(struct BTreeIndexHeader));
 
@@ -47,6 +52,10 @@ BTreeIndexHeader* new_b_tree_index_header(RegistryType registry_type) {
     return header;
 }
 
+/**
+ * Deallocates the target b-tree index header and its root node if in memory
+ * @param b_tree_index_header target B-Tree index header
+ */
 void destroy_b_tree_index_header(BTreeIndexHeader* b_tree_index_header) {
     if (b_tree_index_header == NULL) {
         return;
@@ -56,6 +65,11 @@ void destroy_b_tree_index_header(BTreeIndexHeader* b_tree_index_header) {
     free(b_tree_index_header);
 }
 
+/**
+ * Allocates a new B-Tree index node for the given B-Tree
+ * @param b_tree_index_header the header of the tree this node is part of
+ * @return the newly allocated node
+ */
 BTreeIndexNode* new_btree_index_node(BTreeIndexHeader* b_tree_index_header) {
     /**
      * Why am I allocating a node with an extra space on each array:
@@ -70,9 +84,12 @@ BTreeIndexNode* new_btree_index_node(BTreeIndexHeader* b_tree_index_header) {
 
     node->tipoNo = LEAF_NODE;
     node->nroChaves = 0;
+
+    // Allocate element & edge arrays with an extra slot for easier isolated manipulation
     node->elements = malloc(b_tree_index_header->degree * sizeof(struct IndexElement));
     node->edges = malloc((b_tree_index_header->degree + 1) * sizeof(int32_t));
 
+    // Sets all elements and edges' words to 0xFFFFFFFF to indicate NULLs
     memset(node->elements, -1, (b_tree_index_header->degree) * sizeof(struct IndexElement));
     memset(node->edges, -1, (b_tree_index_header->degree + 1) * sizeof(int32_t));
 
@@ -82,6 +99,10 @@ BTreeIndexNode* new_btree_index_node(BTreeIndexHeader* b_tree_index_header) {
     return node;
 }
 
+/**
+ * Deallocate the target B-Tree index node alongside its' internal arrays
+ * @param b_tree_index_node target index node
+ */
 void destroy_b_tree_index_node(BTreeIndexNode* b_tree_index_node) {
     if (b_tree_index_node == NULL) {
         return;
@@ -92,6 +113,11 @@ void destroy_b_tree_index_node(BTreeIndexNode* b_tree_index_node) {
     free(b_tree_index_node);
 }
 
+/**
+ * Create a new B-Tree index for the given registry_type
+ * @param registry_type tree's registry type
+ * @return the new B-Tree's header
+ */
 BTreeIndexHeader* new_b_tree_index(RegistryType registry_type) {
     return new_b_tree_index_header(registry_type);
 }
@@ -418,6 +444,14 @@ BTreeIndexInsertResponse b_tree_index_insert(BTreeIndexHeader* index_header, BTr
     return response;
 }
 
+/**
+ * B-Tree search, very similar to the insertion implementation (or, to be exact, the opposite)
+ * @param index_header tree's header
+ * @param current_node_rrn current node being searched
+ * @param file tree's file ptr
+ * @param id the ID being search
+ * @return the element found (if not found, return an element with ID -1)
+ */
 IndexElement b_tree_index_find(BTreeIndexHeader* index_header, int32_t current_node_rrn, FILE* file, int32_t id) {
     ex_assert(current_node_rrn < index_header->proxRRN, EX_GENERIC_ERROR);
     // If no RRN is provided, search for root node
