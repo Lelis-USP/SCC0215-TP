@@ -1,6 +1,0 @@
-test_zone
-!test-cases-1/*
-src/main
-src/delivery.zip
-!src/Makefile
-build
